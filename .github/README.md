@@ -1,8 +1,7 @@
 # Ultimate Full Loot Pvp Script
 ![image](https://github.com/user-attachments/assets/b63cce31-c911-414f-9a30-c88727b19da0)
 
-A drop-in Eluna script that turns every world-PvP kill into a “spoils of war” event:  
-Items and gold are ripped from the victim and packed into free-for-all loot chests that spawn around the corpse. This lets you create risk-vs-reward, sandbox-style PvP without touching database loot tables or core code.
+Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core or database edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone overrides for surgical control over your world-PvP loot experience.
 
 ---
 
@@ -33,7 +32,7 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 
 (2a) If creating one, set `consumable = 0` and `useGroupLootRules = 0` and `leaveLoot = 0` and `chestLoot = 0 ` and `logLoot = 1`
 
-_No database edits, recompiles, or patches required._
+_No recompiles or patches required._
 
 ---
 
