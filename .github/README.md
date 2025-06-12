@@ -19,7 +19,7 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 
 ## Installation
 1. Copy `variable_pvp_loot_drop.lua` into your server’s `lua_scripts/` folder.
-2. Use the provided .sql for a readymade Chest Object or Create your own. (2a) 
+2. Use the provided .sql over _world for Chest Object or Create your own. (2a) 
 3. Restart `worldserver`.  
 4. Kill another player in the open world to see chests spawn.
 
