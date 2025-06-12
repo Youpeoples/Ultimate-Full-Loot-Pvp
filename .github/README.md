@@ -1,5 +1,5 @@
 # Ultimate Full Loot Pvp Script
-![image](https://github.com/user-attachments/assets/ddf31b9d-af38-48e3-94b8-e0f8a5e1aa8c)
+![image](https://github.com/user-attachments/assets/b63cce31-c911-414f-9a30-c88727b19da0)
 
 A drop-in Eluna script that turns every world-PvP kill into a “spoils of war” event:  
 Items and gold are ripped from the victim and packed into free-for-all loot chests that spawn around the corpse. This lets you create risk-vs-reward, sandbox-style PvP without touching database loot tables or core code.
@@ -18,9 +18,12 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 ---
 
 ## Installation
-1. Copy `variable_pvp_loot_drop.lua` into your server’s `lua_scripts/` folder.  
-2. Restart `worldserver`.  
-3. Kill another player in the open world to see chests spawn.
+1. Copy `variable_pvp_loot_drop.lua` into your server’s `lua_scripts/` folder.
+2. Use the provided .sql for a readymade Chest Object or Create your own. (2a) 
+3. Restart `worldserver`.  
+4. Kill another player in the open world to see chests spawn.
+
+(2a) If creating your own, make sure to set `consumable = 0` and `useGroupLootRules = 0` 
 
 _No database edits, recompiles, or patches required._
 
@@ -72,6 +75,7 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 
 
 ---
+
 
 ## How It Works
 1. **Kill detection** – `ON_KILL_PLAYER` event fires.  
