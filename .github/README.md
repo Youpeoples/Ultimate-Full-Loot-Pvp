@@ -59,7 +59,6 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
 | `ITEM_DROP_PERCENT` | % of eligible items to drop |
-| `GOLD_PERCENT` | Flat % gold to drop |
 | `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
 | `SPIRIT_HEALER_RANGE` | 	Range for spirit-healer check (m) |
