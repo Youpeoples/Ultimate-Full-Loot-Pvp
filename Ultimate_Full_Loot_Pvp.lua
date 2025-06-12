@@ -1,4 +1,11 @@
--- PvP Loot Chest 
+--========================================================================--
+--                      ULTIMATE FULL LOOT PVP                            --
+--========================================================================--
+
+-- Below CFG Block, you will find INDIVIDUAL ZONE OVERRIDES.
+-- There, you can override settings on a per-zone basis.
+-- Any zone setting not explicitly listed in INDIVIDUAL ZONE OVERRIDES 
+-- will inherit the default values defined within CFG.
 
 local CFG = {
     --------------------------------------------------------------------
@@ -40,6 +47,14 @@ local CFG = {
     IGNORE_HEIRLOOMS           = true,
     IGNORE_UNIQUE_EQUIPPED     = false,
     IGNORE_SOULBOUND           = false,
+    IGNORE_QUALITY = {                  -- 0 poor, 1 common, 2 uncommon,
+        [1] = false,                    -- 3 rare, 4 epic, 5 legendary
+        [2] = false,
+        [3] = false,
+        [4] = false,
+        [5] = true,   -- ignore legendaries
+    },
+    IGNORE_BOP              = false,
     --------------------------------------------------------------------
     -- Gold filters
     --------------------------------------------------------------------
@@ -77,28 +92,53 @@ local CFG = {
     IGNORE_RESS_SICKNESS      = true,    -- skip if victim has aura 15007
 
     --------------------------------------------------------------------
-    -- Item rarity & BoP filters
-    --------------------------------------------------------------------
-    IGNORE_QUALITY = {                  -- 0 poor, 1 common, 2 uncommon,
-        [1] = false,                    -- 3 rare, 4 epic, 5 legendary
-        [2] = false,
-        [3] = false,
-        [4] = false,
-        [5] = true,   -- ignore legendaries
-    },
-    IGNORE_BOP              = false,
-
-    --------------------------------------------------------------------
     -- Debug
     --------------------------------------------------------------------
     DEBUG                   = false,
 }
-local LootStore = {} 
--------------------------------------------------------- build fast lookup sets 
-local IGNORE_ID = CFG.CUSTOM_IGNORE_IDS
-local ALLOW_ID  = CFG.CUSTOM_ALLOW_IDS
+local DefaultCFG = CFG     ---do not alter
 
-local IGNORE_CLASS = CFG.CUSTOM_IGNORE_CLASSES  -- ["class"] or "class.sub"
+--========================================================================--
+--                    Individual Zone Overrides Section                   --
+--      Your zones will use default settings unless stated otherwise..    --
+--========================================================================--
+local ZoneOverrides = {
+  -- Hinterlands (zoneId = 47) gets double despawn time
+  --    and legendaries are flagged to drop.
+  [47] = {
+      DESPAWN_SEC    = 120,
+      IGNORE_QUALITY = {
+        [1] = false,
+        [2] = false,
+        [3] = false,
+        [4] = false,
+        [5] = false,  
+      },
+    },
+  -- add more as needed…
+}
+
+--========================================================================--
+--                       NO TOUCH BEYOND THIS POINT                       --
+--========================================================================--
+-- shallow-copy defaults + apply overrides
+local function GetCFGForZone(zoneId)
+  local cfg = {}
+  -- copy all defaults
+  for k,v in pairs(DefaultCFG) do
+    cfg[k] = v
+  end
+  -- layer in any zone-specific tweaks
+  local o = ZoneOverrides[zoneId]
+  if o then
+    for k,v in pairs(o) do
+      cfg[k] = v
+    end
+  end
+  return cfg
+end
+local LootStore = {} 
+--------------------------------------------------------
 local MAX_CHEST_ITEMS = 16          -- engine shows max 16 loot slots
 
 ----------------------------------------------- spirit-healer IDs
@@ -185,17 +225,6 @@ local function fmtCoins(c)
     if co>0 or #t==0 then t[#t+1]=co.." c" end
     return table.concat(t," ")
 end
----------------------------------------------------- helper: item-filter checks
-local function shouldSkipItem(it)
-    if not it then return true end  -- safeguard
-    if CFG.IGNORE_QUALITY[it:GetQuality()] then return true end
-    if CFG.IGNORE_BOP then
-        local tpl = it:GetTemplate()
-        if tpl and tpl:GetBonding() == 1 then return true end
-    end
-    return false
-end
-
 ----------------------------------------------------------- helper: spirit range
 local function IsNearSpiritHealer(plr, dist)
     dist=dist or 20
@@ -206,7 +235,7 @@ local function IsNearSpiritHealer(plr, dist)
 end
 
 ---------------------------------------------------------------- item gatherer
-local function ShouldDropItem(it, owner, bagSlot)
+local function ShouldDropItem(it, owner, bagSlot, cfg)
     if not it then return false end                 -- paranoia
 
     -------------------------------------------------------------
@@ -243,28 +272,28 @@ local function ShouldDropItem(it, owner, bagSlot)
     -------------------------------------------------------------
     -- explicit allow / deny
     -------------------------------------------------------------
-    if ALLOW_ID[entry]  then return true  end
-    if IGNORE_ID[entry] then return false end
+    if cfg.CUSTOM_ALLOW_IDS[entry] then return true end
+    if cfg.CUSTOM_IGNORE_IDS[entry] then return false end
 
     -- soul-bound
-    if CFG.IGNORE_SOULBOUND and it:IsSoulBound() then return false end
+    if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then return false end
 
     -- quest flag (0x0004) – only if flags known
-    if CFG.IGNORE_QUEST_ITEMS and band(flags, 0x0004) ~= 0 then return false end
+    if cfg.IGNORE_QUEST_ITEMS and band(flags, 0x0004) ~= 0 then return false end
 
     -- class / subclass based filters
-    if CFG.IGNORE_CONSUMABLES     and class == 0                       then return false end
-    if CFG.IGNORE_REAGENTS        and (class == 5 or class == 9)       then return false end
-    if CFG.IGNORE_KEYS            and class == 13                      then return false end
-    if CFG.IGNORE_HEIRLOOMS       and quality == 7                     then return false end
-    if CFG.IGNORE_UNIQUE_EQUIPPED and uniqueEq                         then return false end
+    if cfg.IGNORE_CONSUMABLES     and class == 0                       then return false end
+    if cfg.IGNORE_REAGENTS        and (class == 5 or class == 9)       then return false end
+    if cfg.IGNORE_KEYS            and class == 13                      then return false end
+    if cfg.IGNORE_HEIRLOOMS       and quality == 7                     then return false end
+    if cfg.IGNORE_UNIQUE_EQUIPPED and uniqueEq                         then return false end
         -- quality / BoP filters ----------------------------------------
-    if CFG.IGNORE_QUALITY[quality] then return false end
-    if CFG.IGNORE_BOP and tpl and tpl.GetBonding and tpl:GetBonding() == 1 then
+    if cfg.IGNORE_QUALITY[quality] then return false end
+    if cfg.IGNORE_BOP and tpl and tpl.GetBonding and tpl:GetBonding() == 1 then
         return false
     end
     -- profession-bag slots (bags 1-4 only) -----------------------------
-    if CFG.IGNORE_PROFESSION_BAG_SLOTS and bagSlot and bagSlot > 0 then
+    if cfg.IGNORE_PROFESSION_BAG_SLOTS and bagSlot and bagSlot > 0 then
         -- inventory slots 19-22 hold the bag containers
         local bag = owner:GetItemByPos(255, bagSlot + 18)
         if BagFamily(bag) ~= 0 then             -- uses helper above
@@ -273,18 +302,19 @@ local function ShouldDropItem(it, owner, bagSlot)
     end
 
     -- numeric thresholds (only if values known)
-    if CFG.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < CFG.IGNORE_VENDOR_VALUE_BELOW then
+    if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         return false
     end
-    if CFG.IGNORE_ITEMLEVEL_BELOW   > 0 and ilvl      < CFG.IGNORE_ITEMLEVEL_BELOW   then
+    if cfg.IGNORE_ITEMLEVEL_BELOW   > 0 and ilvl      < cfg.IGNORE_ITEMLEVEL_BELOW   then
         return false
     end
-    if CFG.IGNORE_STACK_SIZE_ABOVE  > 0 and it:GetCount() > CFG.IGNORE_STACK_SIZE_ABOVE then
+    if cfg.IGNORE_STACK_SIZE_ABOVE  > 0 and it:GetCount() > cfg.IGNORE_STACK_SIZE_ABOVE then
         return false
     end
 
     -- table-driven class / subclass ignore
-    if IGNORE_CLASS[tostring(class)] or IGNORE_CLASS[class.."."..subClass] then
+    if cfg.CUSTOM_IGNORE_CLASSES[tostring(class)]
+    or cfg.CUSTOM_IGNORE_CLASSES[class.."."..subClass] then
         return false
     end
 
@@ -294,12 +324,12 @@ end
 -- ------------------------------------------------------------
 -- Collect every candidate item according to CFG container flags
 -- ------------------------------------------------------------
-local function gatherItems(plr)
+local function gatherItems(plr, cfg)
     local list, total = {}, 0
 
     -- internal helper --------------------------------------------------
     local function add(it, where, bagIndex)
-        if it and ShouldDropItem(it, plr, bagIndex) then
+        if it and ShouldDropItem(it, plr, bagIndex, cfg) then
             total = total + 1
             -- snapshot ↓
             list[#list+1] = {
@@ -314,7 +344,7 @@ local function gatherItems(plr)
     --------------------------------------------------------------------
     -- 1) EQUIPPED SLOTS 0-18
     --------------------------------------------------------------------
-    if CFG.INCLUDE_EQUIPPED then
+    if cfg.INCLUDE_EQUIPPED then
         for slot = 0, 18 do
             add(plr:GetEquippedItemBySlot(slot), "eq ", nil)   -- nil bagIndex
         end
@@ -323,7 +353,7 @@ local function gatherItems(plr)
     --------------------------------------------------------------------
     -- 2) BACKPACK (bag 0, inv slots 23-38)
     --------------------------------------------------------------------
-    if CFG.INCLUDE_BACKPACK then
+    if cfg.INCLUDE_BACKPACK then
         for slot = 23, 38 do
             add(plr:GetItemByPos(255, slot), "bp ", 0)         -- bagIndex 0
         end
@@ -332,7 +362,7 @@ local function gatherItems(plr)
     --------------------------------------------------------------------
     -- 3) ADDITIONAL BAGS (inventory slots 19-22 → bags 1-4)
     --------------------------------------------------------------------
-    if CFG.INCLUDE_BAGS then
+    if cfg.INCLUDE_BAGS then
         for invSlot = 19, 22 do
             local bagItem = plr:GetItemByPos(255, invSlot)
             if bagItem then
@@ -370,19 +400,19 @@ end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
 -------------------------------------------------------------- NEW multi-drop
-local function spawnChests(killer, victim, items)
-    local take = math.max(1, math.floor(#items * CFG.ITEM_DROP_PERCENT / 100 + 0.5))
-    dbg("Dropping " .. take .. " of " .. #items .. " items (" .. CFG.ITEM_DROP_PERCENT .. "%)")
+local function spawnChests(killer, victim, items,cfg)
+    local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
+    dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)")
     local totalChests = math.ceil(take / MAX_CHEST_ITEMS)
 
     ----------------------------------------------------------------
     -- gold distribution
     ----------------------------------------------------------------
     local victimGold = victim:GetCoinage()
-    local pct = math.random(CFG.GOLD_PERCENT_MIN, CFG.GOLD_PERCENT_MAX)
+    local pct = math.random(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX)
     local rawGive = math.floor(victimGold * pct / 100)
-    if CFG.GOLD_CAP_PER_KILL > 0 and rawGive > CFG.GOLD_CAP_PER_KILL then
-        rawGive = CFG.GOLD_CAP_PER_KILL
+    if cfg.GOLD_CAP_PER_KILL > 0 and rawGive > cfg.GOLD_CAP_PER_KILL then
+        rawGive = cfg.GOLD_CAP_PER_KILL
     end
     if rawGive > 0 then
         victim:ModifyMoney(-rawGive)
@@ -390,7 +420,7 @@ local function spawnChests(killer, victim, items)
 
     local perChest, remainder = 0, 0
     if rawGive > 0 then
-        if CFG.SPLIT_GOLD_BETWEEN_CHESTS then
+        if cfg.SPLIT_GOLD_BETWEEN_CHESTS then
             perChest  = math.floor(rawGive / totalChests)
             remainder = rawGive - (perChest * totalChests)
         else
@@ -409,7 +439,7 @@ local function spawnChests(killer, victim, items)
         local cx = baseX + math.cos(angle) * radius
         local cy = baseY + math.sin(angle) * radius
 
-        local chest = killer:SummonGameObject(CFG.CHEST_ENTRY, cx, cy, baseZ, baseO, CFG.DESPAWN_SEC)
+        local chest = killer:SummonGameObject(cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC)
         if not chest then
             dbg("Chest spawn FAILED (" .. c .. ")")
             break
@@ -440,7 +470,7 @@ local function spawnChests(killer, victim, items)
         end
 
         -- stash gold
-        if rawGive > 0 then
+        if rawGive > 0 and cfg.SPLIT_GOLD_BETWEEN_CHESTS then
             local gold = perChest
             if c == 1 then gold = gold + remainder end
             if gold > 0 then
@@ -456,53 +486,68 @@ end
 
 
 ---------------------------------------------------------------- main callback
-local function OnKillPlayer(event,killer,victim)
-    dbg("--- PvP kill detected ---")
+local function OnKillPlayer(event, killer, victim)
+    -- grab the per-zone config
+    local zoneId = victim:GetZoneId()
+    local cfg    = GetCFGForZone(zoneId)
+    dbg(string.format("--- PvP kill detected in zone %d ---", zoneId))
+
     -- 0) master switch
-    if not CFG.ENABLE_MOD then return end
+    if not cfg.ENABLE_MOD then return end
 
     -- 2) battleground toggle
-    if CFG.IGNORE_BATTLEGROUND and victim:InBattleground() then
-        dbg("Battleground – abort"); return
+    if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
+        dbg("Battleground – abort")
+        return
     end
 
     -- 4) level gates
-    if victim:GetLevel() < CFG.MIN_LEVEL or victim:GetLevel() > CFG.MAX_LEVEL then
-        dbg("Outside level gate – abort"); return
+    if victim:GetLevel() < cfg.MIN_LEVEL or victim:GetLevel() > cfg.MAX_LEVEL then
+        dbg("Outside level gate – abort")
+        return
     end
 
     -- 5) level-difference window
     local diff = math.abs(killer:GetLevel() - victim:GetLevel())
-    if diff < CFG.MIN_LEVEL_DIFF or diff > CFG.MAX_LEVEL_DIFF then
-        dbg("Level diff "..diff.." outside window – abort"); return
+    if diff < cfg.MIN_LEVEL_DIFF or diff > cfg.MAX_LEVEL_DIFF then
+        dbg("Level diff "..diff.." outside window – abort")
+        return
     end
 
     -- 6) map / zone filters
-    local mapId  = victim:GetMapId()
-    local zoneId = victim:GetZoneId()
-    if next(CFG.MAP_ALLOWLIST)  and not CFG.MAP_ALLOWLIST[mapId]  then return end
-    if CFG.MAP_BLOCKLIST[mapId]                             then return end
-    if next(CFG.ZONE_ALLOWLIST) and not CFG.ZONE_ALLOWLIST[zoneId] then return end
-    if CFG.ZONE_BLOCKLIST[zoneId]                           then return end
+    local mapId = victim:GetMapId()
+    if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId] then return end
+    if cfg.MAP_BLOCKLIST[mapId]                             then return end
+    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then return end
+    if cfg.ZONE_BLOCKLIST[zoneId]                           then return end
 
     -- 7) spirit-healer proximity
-    if CFG.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, CFG.SPIRIT_HEALER_RANGE) then
-        dbg("Near spirit healer – abort"); return
+    if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
+        dbg("Near spirit healer – abort")
+        return
     end
 
     dbg("Killer "..killer:GetName().." ("..killer:GetLevel()..") / Victim "
         ..victim:GetName().." ("..victim:GetLevel()..")")
 
-   if CFG.IGNORE_RESS_SICKNESS and victim:HasAura(15007) then
-        dbg("Resurrection sickness – abort"); return
+    -- resurrection sickness
+    if cfg.IGNORE_RESS_SICKNESS and victim:HasAura(15007) then
+        dbg("Resurrection sickness – abort")
+        return
     end
 
-    local items=gatherItems(victim)
-    if #items==0 then dbg("No items to drop"); return end
+    local items = gatherItems(victim, cfg)
+    if #items == 0 then
+        dbg("No items to drop")
+        return
+    end
+
     shuffle(items)
-    spawnChests(killer,victim,items)
+    spawnChests(killer, victim, items, cfg)
     dbg("--- done ---")
 end
-RegisterPlayerEvent(6,OnKillPlayer)           -- 6 = ON_KILL_PLAYER
+
+RegisterPlayerEvent(6, OnKillPlayer)
+           -- 6 = ON_KILL_PLAYER
 
 
