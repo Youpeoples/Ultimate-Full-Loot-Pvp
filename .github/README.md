@@ -1,18 +1,25 @@
 # Ultimate Full Loot Pvp Script
 ![image](https://github.com/user-attachments/assets/b63cce31-c911-414f-9a30-c88727b19da0)
 
-A drop-in Eluna script that turns every world-PvP kill into a “spoils of war” event:  
-Items and gold are ripped from the victim and packed into free-for-all loot chests that spawn around the corpse. This lets you create risk-vs-reward, sandbox-style PvP without touching database loot tables or core code.
+Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone overrides for surgical control over your world-PvP loot experience.
 
 ---
 
 ## Key Features
-* **Multi-chest logic** – up to 16 items per chest, unlimited overflow.  
-* **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.  
-* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and resurrection-sickness skip.  
-* **Fine-grained item rules** – drop only what you want (quality, BoP, quest, consumables, reagents, profession-bag contents, vendor value, item-level, stack size, explicit allow/deny lists).  
-* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.  
-* **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.  
+* **Multi-chest logic** – up to 16 items per chest, unlimited overflow.
+  
+* **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.
+  
+* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and resurrection-sickness skip.
+  
+* **Fine-grained item rules** – drop only what you want (quality, BoP, quest, consumables, reagents, profession-bag contents, vendor value, item-level, stack size, explicit allow/deny lists).
+  
+* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
+  
+* **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.
+  
+* **Per‐zone overrides** – Want more control? Maintain a single default configuration while customizing behavior (despawn timers, quality filters, gold cuts, etc.) on a per-zone basis for truly granular control over PvP loot.
+  
 * **Full DEBUG mode** – verbose console output for every step.
 
 ---
@@ -25,7 +32,7 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 
 (2a) If creating one, set `consumable = 0` and `useGroupLootRules = 0` and `leaveLoot = 0` and `chestLoot = 0 ` and `logLoot = 1`
 
-_No database edits, recompiles, or patches required._
+_No recompiles or patches required._
 
 ---
 
