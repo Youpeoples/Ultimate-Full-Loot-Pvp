@@ -1,7 +1,7 @@
 # Ultimate Full Loot Pvp Script
 ![image](https://github.com/user-attachments/assets/b63cce31-c911-414f-9a30-c88727b19da0)
 
-Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core or database edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone overrides for surgical control over your world-PvP loot experience.
+Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone overrides for surgical control over your world-PvP loot experience.
 
 ---
 
