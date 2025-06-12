@@ -67,7 +67,7 @@ local CFG = {
     CHEST_ENTRY           = 2069420,     -- chest template
     ITEM_DROP_PERCENT     = 100,         -- % of victim items to drop
     GOLD_PERCENT          = 100,         -- % of gold to drop
-    DESPAWN_SEC           = 600,         -- chest lifetime (seconds)
+    DESPAWN_SEC           = 60,         -- chest lifetime (seconds)
 
     --------------------------------------------------------------------
     -- Context exclusions
