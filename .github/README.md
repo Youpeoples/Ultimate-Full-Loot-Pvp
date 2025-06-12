@@ -105,6 +105,10 @@ Coding style: keep line length ≤ 120 chars, use 4-space indents, no trailing w
 
 ---
 
-## License
-MIT — do whatever you want, just keep the original copyright header.
+
+## 🙏 Credits & License
+
+* **Author**: Stephen Kania
+* **License**: MIT License (see `LICENSE`)
+* **Based on**: AzerothCore, TrinityCore, and Eluna
 
