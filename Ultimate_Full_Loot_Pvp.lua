@@ -241,34 +241,73 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     -------------------------------------------------------------
     -- Feature-probe what this core exposes
     -------------------------------------------------------------
-    local hasItemMeta   = (it.GetFlags   and it.GetClass)           -- “new” item API
-    local hasTemplateFn = (it.GetTemplate ~= nil)                  -- older cores
-    local tpl           = hasTemplateFn and it:GetTemplate() or nil
+        -- grab template if available
+    local tpl = (it.GetTemplate and it:GetTemplate()) or nil
 
-    -- Accessors with graceful fallback --------------------------
-    local function IFN(obj, fn,  ...) return (obj and obj[fn]) and obj[fn](obj, ...) end
-    local function GET(obj, fn, d)    return (obj and obj[fn]) and obj[fn](obj) or d end
+    -- entry ID
+    local entry = it:GetEntry()
 
-    local entry     = it:GetEntry()
-    local flags     = hasItemMeta and GET(it,  "GetFlags",   0)
-                   or tpl         and GET(tpl, "GetFlags",   0) or 0
-    local class     = hasItemMeta and GET(it,  "GetClass",   0)
-                   or tpl         and GET(tpl, "GetClass",   0) or 0
-    local subClass  = hasItemMeta and GET(it,  "GetSubClass",0)
-                   or tpl         and GET(tpl, "GetSubClass",0) or 0
+    -- flags
+    local flags = 0
+    if it.GetFlags then
+        flags = it:GetFlags()
+    elseif tpl and tpl.GetFlags then
+        flags = tpl:GetFlags()
+    end
+
+    -- class & subclass
+    local class, subClass = 0, 0
+    if it.GetClass then
+        class = it:GetClass()
+        if it.GetSubClass then
+            subClass = it:GetSubClass()
+        end
+    elseif tpl and tpl.GetClass then
+        class = tpl:GetClass()
+        if tpl.GetSubClass then
+            subClass = tpl:GetSubClass()
+        end
+    end
+
+      -- debug item level
+    dbg(string.format("Checking item %d: class = %d: and subclass = %d", entry, class, subClass))
+
+
+    -- quality
     local quality = 0
-    if it.GetQuality then                       -- best source
+    if it.GetQuality then
         quality = it:GetQuality()
-    elseif tpl and tpl.GetQuality then          -- fallback
+    elseif tpl and tpl.GetQuality then
         quality = tpl:GetQuality()
     end
 
-    local sellPrice = hasItemMeta and GET(it,  "GetSellPrice",0)
-                   or tpl         and GET(tpl, "GetSellPrice",0) or 0
-    local ilvl      = hasItemMeta and GET(it,  "GetItemLevel",0)
-                   or tpl         and GET(tpl, "GetItemLevel",0) or 0
-    local uniqueEq  = tpl and IFN(tpl,"IsUniqueEquipped")          -- boolean or nil
+    -- sell price
+    local sellPrice = 0
+    if it.GetSellPrice then
+        sellPrice = it:GetSellPrice()
+    elseif tpl and tpl.GetSellPrice then
+        sellPrice = tpl:GetSellPrice()
+    end
 
+    -- item level
+    local ilvl = 0
+    if it.GetItemLevel then
+        ilvl = it:GetItemLevel()
+    elseif tpl and tpl.GetItemLevel then
+        ilvl = tpl:GetItemLevel()
+    end
+
+      -- debug item level
+    dbg(string.format("Checking item %d: ItemLevel = %d", entry, ilvl))
+
+    -- unique-equipped flag
+    local uniqueEq = false
+    if tpl and tpl.IsUniqueEquipped then
+        uniqueEq = tpl:IsUniqueEquipped()
+    end
+
+      -- debug item level
+    dbg(string.format("Checking item %d: uniqueEq = %s", entry,tostring(uniqueEq)))
     -------------------------------------------------------------
     -- explicit allow / deny
     -------------------------------------------------------------
@@ -300,7 +339,11 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
             return false                        -- ignore items in prof bags
         end
     end
-
+    dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice))
+    if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
+        dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW)
+        return false
+    end
     -- numeric thresholds (only if values known)
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         return false
