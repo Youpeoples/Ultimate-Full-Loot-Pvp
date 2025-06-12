@@ -23,7 +23,7 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 3. Restart `worldserver`.  
 4. Kill another player in the open world to see chests spawn.
 
-(2a) If creating your own, make sure to set `consumable = 0` and `useGroupLootRules = 0` 
+(2a) If creating one, set `consumable = 0` and `useGroupLootRules = 0` and `leaveLoot = 0` and `chestLoot = 0 ` and `logLoot = 1`
 
 _No database edits, recompiles, or patches required._
 
