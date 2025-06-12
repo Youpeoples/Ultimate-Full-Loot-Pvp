@@ -11,7 +11,7 @@ local CFG = {
     --------------------------------------------------------------------
     MAP_ALLOWLIST         = {[0]=true},      -- e.g. [0]=true,[571]=true
     MAP_BLOCKLIST         = {},
-    ZONE_ALLOWLIST        = {[47]=true},  --
+    ZONE_ALLOWLIST        = {[47]=true},--Hinterlands Only.Remove for All
     ZONE_BLOCKLIST        = {},           -- [4197]=true, :Wintergrasp    
 
     --------------------------------------------------------------------
