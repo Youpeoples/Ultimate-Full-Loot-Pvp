@@ -7,12 +7,20 @@ Items and gold are ripped from the victim and packed into free-for-all loot ches
 ---
 
 ## Key Features
-* **Multi-chest logic** – up to 16 items per chest, unlimited overflow.  
-* **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.  
-* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and resurrection-sickness skip.  
-* **Fine-grained item rules** – drop only what you want (quality, BoP, quest, consumables, reagents, profession-bag contents, vendor value, item-level, stack size, explicit allow/deny lists).  
-* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.  
-* **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.  
+* **Multi-chest logic** – up to 16 items per chest, unlimited overflow.
+  
+* **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.
+  
+* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and resurrection-sickness skip.
+  
+* **Fine-grained item rules** – drop only what you want (quality, BoP, quest, consumables, reagents, profession-bag contents, vendor value, item-level, stack size, explicit allow/deny lists).
+  
+* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
+  
+* **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.
+  
+* **Per‐zone overrides** – Want more control? Maintain a single default configuration while customizing behavior (despawn timers, quality filters, gold cuts, etc.) on a per-zone basis for truly granular control over PvP loot.
+  
 * **Full DEBUG mode** – verbose console output for every step.
 
 ---
