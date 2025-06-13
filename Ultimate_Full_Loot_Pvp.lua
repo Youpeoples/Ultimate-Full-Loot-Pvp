@@ -944,12 +944,26 @@ if(CFG.ALLOW_PLAYER_COMMAND) then
         local areaId = player:GetAreaId()  
         local cfg    = GetCFG(areaId, zoneId)
 
+        local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
+               (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
+        local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
+               (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
+
         local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
         local enabled = ModIsActiveHere(player, cfg)
-        player:SendBroadcastMessage(("|cffffff00[Ultimate PvP]|r  Zone %d  |  Area %d settings:"):format(zoneId, areaId))
-        player:SendBroadcastMessage((" • Zone Active: %s  |  Drop-Percent: |cffffff00%d%%|r"):format(yesNo(enabled), cfg.ITEM_DROP_PERCENT))
-        player:SendBroadcastMessage((" • Gold Stolen: |cffffff00%d-%d%%|r (cap %s)"):format(
-            cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX,fmtCoins(cfg.GOLD_CAP_PER_KILL)))
+        player:SendBroadcastMessage(
+            ("|cffffff00[Ultimate PvP]|r  Zone %d active: %s  |  Area %d active: %s"):format(
+            zoneId, yesNo(zoneActive), areaId, yesNo(areaActive)))
+         -- danger / safety notice
+        if areaActive then
+            player:SendBroadcastMessage(" • Your possessions |cffff0000ARE|r at risk!")
+        else
+            player:SendBroadcastMessage(" • Your possessions |cff00ff00ARE NOT|r at risk.")
+        end
+       player:SendBroadcastMessage(
+        (" • Gold Drop: |cffffff00%d-%d%%|r (cap %s)  |  Inventory Drop: |cffffff00%d%%|r")
+        :format(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX,
+                fmtCoins(cfg.GOLD_CAP_PER_KILL), cfg.ITEM_DROP_PERCENT))
         player:SendBroadcastMessage((" • Include Equipped: %s  Bags: %s  Bank: %s"):format(
             yesNo(cfg.INCLUDE_EQUIPPED), yesNo(cfg.INCLUDE_BAGS), yesNo(cfg.INCLUDE_BANK_ITEMS)))
         player:SendBroadcastMessage((" • Ignore quality - Rare: %s  Epic: %s  Legendary: %s"):format(
