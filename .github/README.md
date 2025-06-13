@@ -1,7 +1,7 @@
 # Ultimate Full Loot Pvp Script
 ![image](https://github.com/user-attachments/assets/b63cce31-c911-414f-9a30-c88727b19da0)
 
-Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone overrides for surgical control over your world-PvP loot experience.
+Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter. Victims’ gear and gold are instantly pulled into free-for-all loot chests around their corpse. No core edits required. Configure global defaults for drop rates, quality filters, despawn timers, and gold splits, then dial in per-zone and per-area overrides for surgical control over your world-PvP loot experience.
 
 ---
 
@@ -10,17 +10,17 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
   
 * **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.
   
-* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and resurrection-sickness skip.
+* **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and res-sick skip.
   
-* **Fine-grained item rules** – drop only what you want (quality, BoP, quest, consumables, reagents, profession-bag contents, vendor value, item-level, stack size, explicit allow/deny lists).
+* **Fine-grained item rules** – precisely manage drops with layered filters and overrides for virtually any item attribute.
   
 * **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
   
-* **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.
+* **Per‐zone overrides** – Maintain a single default configuration while customizing behavior on a per-zone basis.
   
-* **Per‐zone overrides** – Maintain a single default configuration while customizing behavior (despawn timers, quality filters, gold cuts, etc.) on a per-zone basis.
+* **Per-area overrides** – Configure each individual area inside a zone. Letting every sub-region behave exactly the way you want.
   
-* **Per-area overrides** – Want even more control? Keep a single default setup, tweak per-zone overrides, then go deeper by configuring each individual area inside a zone. Letting every sub-region behave exactly the way you want.
+* **Simple and Extensive configurability** – all behaviour lives in one `CFG` table at the top of the script.
   
 * **Full DEBUG mode** – verbose console output for every step.
 
