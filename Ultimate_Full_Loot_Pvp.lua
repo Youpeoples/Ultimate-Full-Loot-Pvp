@@ -11,30 +11,30 @@ local CFG = {
     --------------------------------------------------------------------
     -- Master toggle
     --------------------------------------------------------------------
-    ENABLE_MOD            = true,        -- turn the whole system on/off
+    ENABLE_MOD                 = true,          -- Turn System on/off
 
     --------------------------------------------------------------------
-    -- Map / zone filters
+    -- Map / zone filters           ( _LIST = {}  :: Allow All )
     --------------------------------------------------------------------
-    MAP_ALLOWLIST         = {[0]=true},      -- e.g. [0]=true,[571]=true
-    MAP_BLOCKLIST         = {},
-    ZONE_ALLOWLIST        = {[47]=true},--Hinterlands Only.Remove for All
-    ZONE_BLOCKLIST        = {},           -- [4197]=true, :Wintergrasp    
+    MAP_ALLOWLIST              = {[0]=true},    -- e.g. { ["0"]=true,},
+    MAP_BLOCKLIST              = {},            -- e.g. { ["1"]=true,},
+    ZONE_ALLOWLIST             = {[47]=true},   --[47]Hinterlands
+    ZONE_BLOCKLIST             = {[4197]=true}, --[4197]Wintergrasp    
 
     --------------------------------------------------------------------
     -- Level restrictions
     --------------------------------------------------------------------
-    MIN_LEVEL             = 1,
-    MAX_LEVEL             = 80,
-    MIN_LEVEL_DIFF        = 0,
-    MAX_LEVEL_DIFF        = 4,
+    MIN_LEVEL                  = 1,
+    MAX_LEVEL                  = 80,
+    MIN_LEVEL_DIFF             = 0,       
+    MAX_LEVEL_DIFF             = 4,
     --------------------------------------------------------------------
     -- Container inclusion
     --------------------------------------------------------------------
     INCLUDE_EQUIPPED           = true,
-    INCLUDE_BACKPACK           = true,   -- bag 0
-    INCLUDE_BAGS               = true,   -- bags 1-4
-    INCLUDE_BANK_ITEMS         = false,  -- (future)
+    INCLUDE_BACKPACK           = true,     -- bag 0
+    INCLUDE_BAGS               = true,     -- bags 1-4
+    INCLUDE_BANK_ITEMS         = false,    -- (future)
 
     --------------------------------------------------------------------
     -- Item-type filters
@@ -47,60 +47,62 @@ local CFG = {
     IGNORE_HEIRLOOMS           = true,
     IGNORE_UNIQUE_EQUIPPED     = false,
     IGNORE_SOULBOUND           = false,
-    IGNORE_QUALITY = {                  -- 0 poor, 1 common, 2 uncommon,
-        [1] = false,                    -- 3 rare, 4 epic, 5 legendary
-        [2] = false,
-        [3] = false,
-        [4] = false,
-        [5] = true,   -- ignore legendaries
+    IGNORE_QUALITY = {                 
+        [1] = false,                       -- ignore common 
+        [2] = false,                       -- ignore uncommon
+        [3] = false,                       -- ignore rare
+        [4] = false,                       -- ignore epic
+        [5] = true,                        -- ignore legendary
     },
-    IGNORE_BOP              = false,
+    IGNORE_BOP                 = false,    -- ignore bind on pickup 
     --------------------------------------------------------------------
     -- Gold filters
     --------------------------------------------------------------------
-    SPLIT_GOLD_BETWEEN_CHESTS = true,
-    GOLD_PERCENT_MIN         = 100,      -- roll between MIN and MAX %
-    GOLD_PERCENT_MAX         = 100,      -- 50-100 % example
-    GOLD_CAP_PER_KILL        = 25000000, -- 2500 g cap (0 = no cap)
+    SPLIT_GOLD_BETWEEN_CHESTS  = true,
+    GOLD_PERCENT_MIN           = 100,      -- roll between MIN and MAX %
+    GOLD_PERCENT_MAX           = 100,      -- 50-100 % example
+    GOLD_CAP_PER_KILL          = 25000000, -- 2500 g cap (0 = no cap)
     --------------------------------------------------------------------
     -- Numeric thresholds
     --------------------------------------------------------------------
-    IGNORE_VENDOR_VALUE_BELOW  = 0,      -- copper
-    IGNORE_ITEMLEVEL_BELOW     = 0,
-    IGNORE_STACK_SIZE_ABOVE    = 0,      -- 0 = off
+    IGNORE_VENDOR_VALUE_BELOW  = 0,        -- copper
+    IGNORE_ITEMLEVEL_BELOW     = 0,        -- the hidden rating(NOT RQ.LVL)
+    IGNORE_STACK_SIZE_ABOVE    = 0,        -- 0 = off
 
     --------------------------------------------------------------------
     -- Explicit allow / deny
     --------------------------------------------------------------------
-    CUSTOM_IGNORE_IDS          = {},     -- { [19019]=true, [17182]=true }
-    CUSTOM_ALLOW_IDS           = {},     -- overrides all ignore checks
-    CUSTOM_IGNORE_CLASSES      = {},     -- e.g. { ["0"]=true, ["4.6"]=true },
+    CUSTOM_IGNORE_IDS          = {[6948]=true,   --Hearthstone
+                                  [5976]=true,   --Guild Tabard 
+                                 },
+    CUSTOM_ALLOW_IDS           = {},       -- overrides all ignore checks
+    CUSTOM_IGNORE_CLASSES      = {},       -- e.g. { ["0"]=true,},
    
     --------------------------------------------------------------------
     -- Chest & loot parameters
     --------------------------------------------------------------------
-    CHEST_ENTRY           = 2069420,     -- chest template
-    ITEM_DROP_PERCENT     = 100,         -- % of victim items to drop
-    DESPAWN_SEC           = 60,          -- chest lifetime (seconds)
-    CREATE_DEFAULT_CHEST  = true,        -- create initial gameobject SQL
+    CHEST_ENTRY               = 2069420,   -- chest template
+    ITEM_DROP_PERCENT         = 100,       -- % of victim items to drop
+    DESPAWN_SEC               = 60,        -- chest lifetime (seconds)
+    CREATE_DEFAULT_CHEST      = true,      -- create initial gameobject SQL
 
     --------------------------------------------------------------------
     -- Context exclusions
     --------------------------------------------------------------------
-    IGNORE_BATTLEGROUND       = true,    -- skip BG kills
-    IGNORE_SPIRIT_HEALER_RANGE= true,    -- apply range check below
-    SPIRIT_HEALER_RANGE       = 20,      -- metres
-    IGNORE_RESS_SICKNESS      = true,    -- skip if victim has aura 15007
+    IGNORE_BATTLEGROUND       = true,      -- skip BG kills
+    IGNORE_SPIRIT_HEALER_RANGE= true,      -- apply range check below
+    SPIRIT_HEALER_RANGE       = 20,        -- metres
+    IGNORE_RESS_SICKNESS      = true,      -- skip if victim has aura 15007
     
     --------------------------------------------------------------------
     -- MMR
     --------------------------------------------------------------------
     -- General MMR settings
-    MMR_ENABLED               = true, -- Enable/disable MMR extension
-    STARTING_MMR              = 100,  -- Start MMR
-    MMR_GAIN                  = 5,    -- Base rate at which players gain MMR
-    MMR_LOSS                  = 5,    -- Base rate at which players lose MMR
-    MMR_ANNOUNCE_CHANGE       = true, -- Message players on MMR change
+    MMR_ENABLED               = true,  -- Enable/disable MMR extension
+    STARTING_MMR              = 100,   -- Start MMR
+    MMR_GAIN                  = 5,     -- Base rate at which players gain MMR
+    MMR_LOSS                  = 5,     -- Base rate at which players lose MMR
+    MMR_ANNOUNCE_CHANGE       = true,  -- Message players on MMR change
     
     MMR_DIMINISHING_RETURNS   = true,  -- Reduces MMR change if far from base MMR
     MMR_DIM_RETURN_RATE       = 5,     -- Coeff for diminishing return reduction/gain of MMR difference
@@ -130,7 +132,7 @@ local CFG = {
     --------------------------------------------------------------------
     -- Debug
     --------------------------------------------------------------------
-    DEBUG                   = false,
+    DEBUG                     = false,
 }
 local DefaultCFG = CFG     ---do not alter
 
@@ -394,13 +396,13 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
             return false                        -- ignore items in prof bags
         end
     end
-	
+    
     dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice))
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW)
         return false
     end
-	
+    
     -- numeric thresholds (only if values known)
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         return false
