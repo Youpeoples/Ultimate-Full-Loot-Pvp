@@ -12,13 +12,13 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
   
 * **Granular filters** – map/zone allow- & block-lists, level gates, spirit-healer range checks, Battleground ignore, and res-sick skip.
   
-* **Fine-grained item rules** – precisely manage drops with layered filters and overrides for virtually any item attribute.
-  
-* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
-  
 * **Per‐zone overrides** – Maintain a single default configuration while customizing behavior on a per-zone basis.
   
 * **Per-area overrides** – Configure each individual area inside a zone. Letting every sub-region behave exactly the way you want.
+  
+* **Fine-grained item rules** – precisely manage drops with layered filters and overrides for virtually any item attribute.
+  
+* **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
   
 * **Simple and Extensive configurability** – all behaviour lives in one `CFG` table at the top of the script.
   
