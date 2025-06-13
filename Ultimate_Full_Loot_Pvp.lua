@@ -48,13 +48,36 @@ local CFG = {
     IGNORE_UNIQUE_EQUIPPED     = false,
     IGNORE_SOULBOUND           = false,
     IGNORE_QUALITY = {                 
-        [1] = false,                       -- ignore common 
-        [2] = false,                       -- ignore uncommon
-        [3] = false,                       -- ignore rare
-        [4] = false,                       -- ignore epic
-        [5] = true,                        -- ignore legendary
+                           [1] = false,    -- ignore common 
+                           [2] = false,    -- ignore uncommon
+                           [3] = false,    -- ignore rare
+                           [4] = false,    -- ignore epic
+                           [5] = true,     -- ignore legendary
     },
-    IGNORE_BOP                 = false,    -- ignore bind on pickup 
+
+    IGNORE_BOP                 = false,   -- ignore bind on pickup 
+
+    IGNORE_EQUIPPED_SLOTS      = {        
+                          [0]  = false,   -- Head
+                          [1]  = false,   -- Neck
+                          [2]  = false,   -- Shoulders
+                          [3]  = false,   -- Shirt
+                          [4]  = false,   -- Chest
+                          [5]  = false,   -- Waist
+                          [6]  = false,   -- Legs
+                          [7]  = false,   -- Feet
+                          [8]  = false,   -- Wrists
+                          [9]  = false,   -- Hands
+                          [10] = false,   -- Finger 1
+                          [11] = false,   -- Finger 2
+                          [12] = false,   -- Trinket 1
+                          [13] = false,   -- Trinket 2
+                          [14] = false,   -- Back
+                          [15] = false,   -- Main Hand
+                          [16] = false,   -- Off Hand
+                          [17] = false,   -- Ranged
+                          [18] = false,   -- Tabard
+    },
     --------------------------------------------------------------------
     -- Gold filters
     --------------------------------------------------------------------
@@ -448,7 +471,10 @@ local function gatherItems(plr, cfg)
     --------------------------------------------------------------------
     if cfg.INCLUDE_EQUIPPED then
         for slot = 0, 18 do
-            add(plr:GetEquippedItemBySlot(slot), "eq ", nil)   -- nil bagIndex
+            -- skip any slot the user has marked to ignore
+            if not cfg.IGNORE_EQUIPPED_SLOTS[slot] then
+                add(plr:GetEquippedItemBySlot(slot), "eq ", nil)
+            end
         end
     end
 
