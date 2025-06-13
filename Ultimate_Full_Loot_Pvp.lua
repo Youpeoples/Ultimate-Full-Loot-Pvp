@@ -12,14 +12,19 @@ local CFG = {
     -- Master toggle
     --------------------------------------------------------------------
     ENABLE_MOD                 = true,          -- Turn System on/off
-
+     --------------------------------------------------------------------
+    -- Command toggle. ( Allows players to see exact risk stats of zone)
     --------------------------------------------------------------------
-    -- Map / zone filters           ( _LIST = {}  :: Allow All )
+    ALLOW_PLAYER_COMMAND       = true,          -- Turn .ultpvp on/off
     --------------------------------------------------------------------
-    MAP_ALLOWLIST              = {[0]=true},    -- e.g. { [0]=true,},
-    MAP_BLOCKLIST              = {},            -- e.g. { [1]=true,},
-    ZONE_ALLOWLIST             = {[47]=true},   --[47]Hinterlands
-    ZONE_BLOCKLIST             = {[4197]=true}, --[4197]Wintergrasp    
+    -- Map / zone filters       ( _LIST = {}  :: Allow All )
+    --------------------------------------------------------------------
+    MAP_ALLOWLIST              = {},             -- e.g. { [0]=true,},
+    MAP_BLOCKLIST              = {},             -- e.g. { [1]=true,},
+    ZONE_ALLOWLIST             = {},             -- e.g. { [0]=false,},
+    ZONE_BLOCKLIST             = {[4197]=true},  --[4197]Wintergrasp    
+    AREA_ALLOWLIST             = {},             -- e.g. { [1]=false,},
+    AREA_BLOCKLIST             = {},             -- e.g. { [0]=true,},
 
     --------------------------------------------------------------------
     -- Level restrictions
@@ -41,6 +46,7 @@ local CFG = {
     --------------------------------------------------------------------
     IGNORE_QUEST_ITEMS         = true,
     IGNORE_CONSUMABLES         = false,
+    IGNORE_CONJURED            = false,     --Soul/Health/Mana stones 
     IGNORE_REAGENTS            = false,
     IGNORE_KEYS                = true,
     IGNORE_PROFESSION_BAG_SLOTS= true,
@@ -112,10 +118,12 @@ local CFG = {
     --------------------------------------------------------------------
     -- Context exclusions
     --------------------------------------------------------------------
-    IGNORE_BATTLEGROUND       = true,      -- skip BG kills
-    IGNORE_SPIRIT_HEALER_RANGE= true,      -- apply range check below
-    SPIRIT_HEALER_RANGE       = 20,        -- metres
-    IGNORE_RESS_SICKNESS      = true,      -- skip if victim has aura 15007
+    IGNORE_BATTLEGROUND       = true,     -- skip BG kills
+    IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
+    SPIRIT_HEALER_RANGE       = 20,       -- metres
+    IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
+    IGNORE_CAPITALS           = true,     -- skip kills in faction capitals
+    IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
     
     --------------------------------------------------------------------
     -- MMR
@@ -159,7 +167,6 @@ local CFG = {
     --------------------------------------------------------------------
     DEBUG                     = false,
 }
-local DefaultCFG = CFG     ---do not alter
 
 --========================================================================--
 --                    Individual Zone Overrides Section                   --
@@ -181,9 +188,52 @@ local ZoneOverrides = {
   -- add more as needed…
 }
 
+--------------------------------------------------------------------
+-- IGNORE_CAPITALS & IGNORE_NEUTRAL_CITIES Granular Tuning
+--------------------------------------------------------------------
+local CAPITAL_AREAS = {
+    [1637] = true,  -- Orgrimmar
+    [1497] = true,  -- Undercity
+    [1638] = true,  -- Thunder Bluff
+    [1519] = true,  -- Stormwind
+    [1537] = true,  -- Ironforge
+    [1657] = true,  -- Darnassus
+}
+local NEUTRAL_CITY_AREAS = {
+     --classic
+    [2255] = true,  -- Everlook
+    [35]   = true,  -- Booty Bay
+    [976]  = true,  -- Gadgetzan
+    [2361] = true,  -- Nighthaven
+    [392]  = true,  -- Ratchet
+    [3425] = true,  -- Cenarion Hold
+    [2268] = true,  -- Light's Hope
+    [1446] = true,  -- Thorium Point
+     --tbc
+    [3712] = true,  -- Area 52
+    [3786] = true,  -- Ogri'la
+    [3565] = true,  -- Cenario Refuge
+    [3649] = true,  -- Sporeggar
+    [3958] = true,  -- Sha'tari Base Camp
+     --wrath
+    [4418] = true,  -- K3
+    [4501] = true,  -- Argent Vanguard
+    [4152] = true,  -- Moaki Harbor
+    [3988] = true,  -- Kamagua
+    [4113] = true,  -- Unu'pe
+    [4161] = true,  -- Wyrmrest Temple
+    [4312] = true,  -- Ebonwatch
+}  
+
+
 --========================================================================--
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
+local DefaultCFG = CFG  
+-- one-shot “you’re in danger” tracker
+local ZoneWarned = {}    -- [playerGuidLow] = { [zoneId]=true }
+
+
 -- Ensure chest exists before proceeding
 if CFG.ENABLE_MOD then
     local ChestExists = WorldDBQuery("SELECT `name` FROM `gameobject_template` WHERE `entry` = "..CFG.CHEST_ENTRY)
@@ -220,10 +270,7 @@ local function GetCFGForZone(zoneId)
   return cfg
 end
 local LootStore = {} 
---------------------------------------------------------
-local MAX_CHEST_ITEMS = 16          -- engine shows max 16 loot slots
-
------------------------------------------------ spirit-healer IDs
+local MAX_CHEST_ITEMS = 16  -- engine shows max 16 loot slots
 local SPIRIT_HEALER_IDS = {[6491]=true,[29259]=true,[32537]=true}
 
 ---------------------------------------------------------------- utils + debug
@@ -251,6 +298,25 @@ local function OnLootStateChange(event, go, state)
 end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 9, OnLootStateChange)
 
+local function ModIsActiveHere(player, cfg)
+    local mapId  = player:GetMapId()
+    local zoneId = player:GetZoneId()
+    local areaId = player:GetAreaId()
+
+    if not cfg.ENABLE_MOD                                   then return false end
+    if cfg.IGNORE_CAPITALS        and CAPITAL_AREAS[areaId]  then return false end
+    if cfg.IGNORE_NEUTRAL_CITIES  and NEUTRAL_CITY_AREAS[areaId] then return false end
+
+    if cfg.MAP_BLOCKLIST[mapId]         then return false end
+    if cfg.ZONE_BLOCKLIST[zoneId]       then return false end
+    if cfg.AREA_BLOCKLIST[areaId]       then return false end
+
+    if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId]   then return false end
+    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then return false end
+    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then return false end
+
+    return true
+end
 -- ------------------------------------------------------------------
 -- Cross-Lua bit-and helper
 -- ------------------------------------------------------------------
@@ -318,12 +384,8 @@ end
 
 ---------------------------------------------------------------- item gatherer
 local function ShouldDropItem(it, owner, bagSlot, cfg)
-    if not it then return false end                 -- paranoia
-
-    -------------------------------------------------------------
-    -- Feature-probe what this core exposes
-    -------------------------------------------------------------
-        -- grab template if available
+    if not it then return false end    
+    -- grab template if available
     local tpl = (it.GetTemplate and it:GetTemplate()) or nil
 
     -- entry ID
@@ -395,7 +457,9 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     -------------------------------------------------------------
     if cfg.CUSTOM_ALLOW_IDS[entry] then return true end
     if cfg.CUSTOM_IGNORE_IDS[entry] then return false end
-
+    if cfg.IGNORE_CONJURED and it:IsConjuredConsumable() then
+        dbg("  → skipped: conjured consumable") return false
+    end
     -- soul-bound
     if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then return false end
 
@@ -529,7 +593,7 @@ local function OnChestUse(event, go, player)
 end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
--------------------------------------------------------------- NEW multi-drop
+-------------------------------------------------------------- Multi-drop
 local function spawnChests(killer, victim, items, cfg)
     local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
     dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)")
@@ -801,14 +865,27 @@ local function OnKillPlayer(event, killer, victim)
 
     -- 6) map / zone filters
     local mapId = victim:GetMapId()
+    local areaId = victim:GetAreaId() 
     if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId] then return end
     if cfg.MAP_BLOCKLIST[mapId]                             then return end
     if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then return end
     if cfg.ZONE_BLOCKLIST[zoneId]                           then return end
+    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then return end
+    if cfg.AREA_BLOCKLIST[areaId]                           then return end
 
     -- 7) spirit-healer proximity
     if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
         dbg("Near spirit healer – abort")
+        return
+    end
+
+    -- 8) capital / neutral city gates
+    if cfg.IGNORE_CAPITALS and CAPITAL_AREAS[areaId] then
+        dbg("Inside capital city – abort")
+        return
+    end
+    if cfg.IGNORE_NEUTRAL_CITIES and NEUTRAL_CITY_AREAS[areaId] then
+        dbg("Inside neutral city – abort")
         return
     end
 
@@ -838,3 +915,43 @@ end
 
 RegisterPlayerEvent(6, OnKillPlayer)
            -- 6 = ON_KILL_PLAYER
+
+
+
+
+--========================================================================--
+--                            COMMANDS                                    --
+--========================================================================--
+if(CFG.ALLOW_PLAYER_COMMAND) then
+    -- ON_LOGIN 
+    RegisterPlayerEvent(3, function(_, player)
+        if not CFG.ENABLE_MOD then return end  
+
+        player:SendBroadcastMessage(
+            "|cffff0000Ultimate PvP|r is active on this realm.  " ..
+            "Type |cff00ff00.ultpvp|r at any time to see the full-loot rules for the zone you’re in."
+        )
+    end)
+
+    -- ON_COMMAND 
+    RegisterPlayerEvent(42, function(_, player, command)
+        if command ~= "ultpvp" then return end
+
+        local zoneId = player:GetZoneId()
+        local areaId = player:GetAreaId()  
+        local cfg    = GetCFGForZone(zoneId)
+
+        local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
+        local enabled = ModIsActiveHere(player, cfg)
+        player:SendBroadcastMessage(("|cffffff00[Ultimate PvP]|r  Zone %d  |  Area %d settings:"):format(zoneId, areaId))
+        player:SendBroadcastMessage((" • Zone Active: %s  |  Drop-Percent: |cffffff00%d%%|r"):format(yesNo(enabled), cfg.ITEM_DROP_PERCENT))
+        player:SendBroadcastMessage((" • Gold Stolen: |cffffff00%d-%d%%|r (cap %s)"):format(
+            cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX,fmtCoins(cfg.GOLD_CAP_PER_KILL)))
+        player:SendBroadcastMessage((" • Include Equipped: %s  Bags: %s  Bank: %s"):format(
+            yesNo(cfg.INCLUDE_EQUIPPED), yesNo(cfg.INCLUDE_BAGS), yesNo(cfg.INCLUDE_BANK_ITEMS)))
+        player:SendBroadcastMessage((" • Ignore quality - Rare: %s  Epic: %s  Legendary: %s"):format(
+            yesNo(cfg.IGNORE_QUALITY[3]), yesNo(cfg.IGNORE_QUALITY[4]), yesNo(cfg.IGNORE_QUALITY[5])))
+        -- return false so the core doesn’t echo “Unknown command: ultpvp”
+        return false
+    end)
+end

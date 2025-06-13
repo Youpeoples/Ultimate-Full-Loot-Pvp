@@ -38,11 +38,14 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | Option | Purpose |
 |--------|---------|
 | `ENABLE_MOD` | Master on/off switch |
+| `ALLOW_PLAYER_COMMAND ` | Player access to info regarding standing location |
 | `MAP_ALLOWLIST / MAP_BLOCKLIST` | Restrict to specific maps (use IDs) |
 | `ZONE_ALLOWLIST / ZONE_BLOCKLIST` | Restrict to zones |
+| `AREA_ALLOWLIST / AREA_BLOCKLIST` | Restrict to area |
 | `MIN_LEVEL / MAX_LEVEL` | Victim level range |
-| `MIN_LEVEL_DIFF / MAX_LEVEL_DIFF` | 	Allowed level difference killer↔victim |
+| `MIN_LEVEL_DIFF / MAX_LEVEL_DIFF` | Allowed level difference killer↔victim |
 | `INCLUDE_EQUIPPED` | 	Include equipped slots 0-18 |
+| `IGNORE_EQUIPPED_SLOTS[0]-[18]` | Skip any particular item slot  |
 | `INCLUDE_BACKPACK` | Include backpack (bag 0) contents |
 | `INCLUDE_BAGS` | Include bags 1-4 contents |
 | `INCLUDE_BANK_ITEMS` | Include bank items(NYI) |
@@ -54,6 +57,7 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_HEIRLOOMS` | Skip heirloom items |
 | `IGNORE_UNIQUE_EQUIPPED` | Skip unique-equipped items  |
 | `IGNORE_SOULBOUND` | Skip soul-bound items |
+| `IGNORE_CONJURED` | Skip conjured items |
 | `SPLIT_GOLD_BETWEEN_CHESTS` | Evenly divide stolen gold across chests |
 | `IGNORE_VENDOR_VALUE_BELOW` | Skip items under this vendor value |
 | `IGNORE_ITEMLEVEL_BELOW` | 	Skip items below this item level |
@@ -62,6 +66,8 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
 | `ITEM_DROP_PERCENT` | % of eligible items to drop |
+| `IGNORE_CAPITALS` | Skip Faction Capitals |
+| `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
 | `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
 | `SPIRIT_HEALER_RANGE` | 	Range for spirit-healer check (m) |
