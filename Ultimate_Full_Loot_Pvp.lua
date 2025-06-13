@@ -95,7 +95,7 @@ local CFG = {
     -- MMR
     --------------------------------------------------------------------
     -- General MMR settings
-    MMR_ENABLED               = true,
+    MMR_ENABLED               = true, -- Enable/disable MMR extension
     STARTING_MMR              = 100,  -- Start MMR
     MMR_GAIN                  = 5,    -- Rate at which players gain MMR
     MMR_LOSS                  = 5,    -- Rate at which players lose MMR
@@ -109,18 +109,18 @@ local CFG = {
     MMR_REWARD_THRESHOLD      = 10,    -- Min % delta req. for MMR reward/loss
     
     MMR_GOLD_REWARD           = true,  -- Kill high MMR player, earn more gold
-    MMR_GOLD_REWARD_RATIO     = 1.1,    -- Reward multiplier, MMR delta x ratio
+    MMR_GOLD_REWARD_RATIO     = 1.1,   -- Reward multiplier, MMR delta x ratio
 
-    MMR_HONOR_REWARD          = true, -- Kill high MMR player, earn honor
+    MMR_HONOR_REWARD          = true,  -- Kill high MMR player, earn honor
     MMR_HONOR_LOSS            = true,  -- Die from low MMR player, lose honor
     MMR_HONOR_RATE            = 10,    -- Reward/lose honor by MMR delta * rate
     
     MMR_BREAK_STREAK_REWARD   = true,  -- Reward killer of streak holders with Arena Points
-    MMR_BREAK_STREAK_LOSS     = false,  -- Lose arena points if killed while holding streak
+    MMR_BREAK_STREAK_LOSS     = true,  -- Lose arena points if killed while holding streak
     MMR_STREAK_LIMIT          = 3,     -- Streak must be at least 3 to award break rewards
     MMR_BREAK_STREAK_RATE     = 5,     -- Reward streak breakers streak x rate Arena Points
     MMR_BREAK_STREAK_MULTIPL  = 1.3,   -- Exponential multiplier for streak break reward/loss
-    MMR_ANNOUNCE_STREAK       = true,   -- Send world messages on new/broken streaks
+    MMR_ANNOUNCE_STREAK       = true,  -- Send world messages on new/broken streaks
     
     -- MMR Back-End Setup
     MMR_DB                    = 'acore_eluna',
