@@ -170,7 +170,7 @@ local CFG = {
 
 --========================================================================--
 --                    Individual Zone Overrides Section                   --
---      Your zones will use default settings unless stated otherwise..    --
+--        Your zones will use default config unless stated otherwise..    --
 --========================================================================--
 local ZoneOverrides = {
   
@@ -187,7 +187,16 @@ local ZoneOverrides = {
     },
   -- add more as needed…
 }
-
+--========================================================================--
+--                    Individual AREA Override Section                     --
+--Areas use ZoneOverrides before default config unless stated otherwise.   --
+--========================================================================--
+local AreaOverrides = {               -- Example
+    [350] = {                         -- Quel'Danil Lodge (in hinterlands)
+        DESPAWN_SEC    = 10,          -- Has very short despawn time
+    },
+    -- add more areas as needed…
+}
 --------------------------------------------------------------------
 -- IGNORE_CAPITALS & IGNORE_NEUTRAL_CITIES Granular Tuning
 --------------------------------------------------------------------
@@ -250,20 +259,17 @@ if CFG.ENABLE_MOD then
 end
 
 -- shallow-copy defaults + apply overrides
-local function GetCFGForZone(zoneId)
-  local cfg = {}
-  -- copy all defaults
-  for k,v in pairs(DefaultCFG) do
-    cfg[k] = v
-  end
-  -- layer in any zone-specific tweaks
-  local o = ZoneOverrides[zoneId]
-  if o then
-    for k,v in pairs(o) do
-      cfg[k] = v
-    end
-  end
-  return cfg
+local function GetCFG(areaId, zoneId)
+    local cfg = {}
+    -- copy defaults
+    for k, v in pairs(DefaultCFG) do cfg[k] = v end
+    -- apply zone-level tweaks (if any)
+    local z = ZoneOverrides[zoneId]
+    if z then for k, v in pairs(z) do cfg[k] = v end end
+    -- apply area-level tweaks (if any) – wins over everything
+    local a = AreaOverrides[areaId]
+    if a then for k, v in pairs(a) do cfg[k] = v end end
+    return cfg
 end
 local LootStore = {} 
 local MAX_CHEST_ITEMS = 16  -- engine shows max 16 loot slots
@@ -833,8 +839,9 @@ end
 ---------------------------------------------------------------- main callback
 local function OnKillPlayer(event, killer, victim)
     -- grab the per-zone config
+    local areaId = victim:GetAreaId()
     local zoneId = victim:GetZoneId()
-    local cfg    = GetCFGForZone(zoneId)
+    local cfg    = GetCFG(areaId, zoneId)
     dbg(string.format("--- PvP kill detected in zone %d ---", zoneId))
 
     -- 0) master switch
@@ -935,7 +942,7 @@ if(CFG.ALLOW_PLAYER_COMMAND) then
 
         local zoneId = player:GetZoneId()
         local areaId = player:GetAreaId()  
-        local cfg    = GetCFGForZone(zoneId)
+        local cfg    = GetCFG(areaId, zoneId)
 
         local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
         local enabled = ModIsActiveHere(player, cfg)
