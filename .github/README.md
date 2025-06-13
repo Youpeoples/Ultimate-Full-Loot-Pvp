@@ -26,13 +26,9 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
 
 ## Installation
 1. Copy `variable_pvp_loot_drop.lua` into your server’s `lua_scripts/` folder.
-2. Use the provided .sql over _world for Chest Object or Create your own. (2a) 
-3. Restart `worldserver`.  
-4. Kill another player in the open world to see chests spawn.
-
-(2a) If creating one, set `consumable = 0` and `useGroupLootRules = 0` and `leaveLoot = 0` and `chestLoot = 0 ` and `logLoot = 1`
-
-_No recompiles or patches required._
+2. Restart `worldserver`.  
+3. Kill another player in the open world to see chests spawn.
+_No Database edits, recompiles or patches required._
 
 ---
 
