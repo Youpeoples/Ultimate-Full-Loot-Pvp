@@ -141,16 +141,16 @@ local DefaultCFG = CFG     ---do not alter
 --      Your zones will use default settings unless stated otherwise..    --
 --========================================================================--
 local ZoneOverrides = {
-  -- Hinterlands (zoneId = 47) gets double despawn time
-  --    and legendaries are flagged to drop.
-  [47] = {
-      DESPAWN_SEC    = 120,
+  
+                                       -- Example:
+  [47] = {                             -- Hinterlands zoneId[47] 
+      DESPAWN_SEC    = 120,            -- Gets double despawn time
       IGNORE_QUALITY = {
         [1] = false,
         [2] = false,
         [3] = false,
         [4] = false,
-        [5] = false,  
+        [5] = false,                   -- And Legendary are not protected
       },
     },
   -- add more as needed…
