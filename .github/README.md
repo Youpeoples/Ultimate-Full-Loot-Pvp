@@ -18,7 +18,9 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
   
 * **Simple config file** – all behaviour lives in one `CFG` table at the top of the script.
   
-* **Per‐zone overrides** – Want more control? Maintain a single default configuration while customizing behavior (despawn timers, quality filters, gold cuts, etc.) on a per-zone basis for truly granular control over PvP loot.
+* **Per‐zone overrides** – Maintain a single default configuration while customizing behavior (despawn timers, quality filters, gold cuts, etc.) on a per-zone basis.
+  
+* **Per-area overrides** – Want even more control? Keep a single default setup, tweak per-zone overrides, then go deeper by configuring each individual area inside a zone. Letting every sub-region behave exactly the way you want.
   
 * **Full DEBUG mode** – verbose console output for every step.
 
