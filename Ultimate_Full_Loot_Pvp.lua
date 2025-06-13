@@ -97,28 +97,28 @@ local CFG = {
     -- General MMR settings
     MMR_ENABLED               = true, -- Enable/disable MMR extension
     STARTING_MMR              = 100,  -- Start MMR
-    MMR_GAIN                  = 5,    -- Rate at which players gain MMR
-    MMR_LOSS                  = 5,    -- Rate at which players lose MMR
+    MMR_GAIN                  = 5,    -- Base rate at which players gain MMR
+    MMR_LOSS                  = 5,    -- Base rate at which players lose MMR
     MMR_ANNOUNCE_CHANGE       = true, -- Message players on MMR change
     
     MMR_DIMINISHING_RETURNS   = true,  -- Reduces MMR change if far from base MMR
-    MMR_DIM_RETURN_RATE       = 5,     -- Rate of reduction per 10 MMR difference
+    MMR_DIM_RETURN_RATE       = 5,     -- Coeff for diminishing return reduction/gain of MMR difference
   
     -- MMR Reward Config
-    MMR_REWARDS               = true,  -- True to disable MMR rewards/losses
+    MMR_REWARDS               = true,  -- True to enable/false to disable MMR rewards/losses
     MMR_REWARD_THRESHOLD      = 10,    -- Min % delta req. for MMR reward/loss
     
     MMR_GOLD_REWARD           = true,  -- Kill high MMR player, earn more gold
     MMR_GOLD_REWARD_RATIO     = 1.1,   -- Reward multiplier, MMR delta x ratio
 
-    MMR_HONOR_REWARD          = true,  -- Kill high MMR player, earn honor
-    MMR_HONOR_LOSS            = true,  -- Die from low MMR player, lose honor
-    MMR_HONOR_RATE            = 10,    -- Reward/lose honor by MMR delta * rate
+    MMR_HONOR_REWARD          = true,  -- Earn honor on kills. Earn more if killer's MMR lower than victim's
+    MMR_HONOR_LOSS            = true,  -- Lose honor on death. Lose less if victim's MMR lower than killer's
+    MMR_HONOR_RATE            = 10,    -- Reward/lose honor by MMR (delta * rate)
     
     MMR_BREAK_STREAK_REWARD   = true,  -- Reward killer of streak holders with Arena Points
     MMR_BREAK_STREAK_LOSS     = true,  -- Lose arena points if killed while holding streak
-    MMR_STREAK_LIMIT          = 3,     -- Streak must be at least 3 to award break rewards
-    MMR_BREAK_STREAK_RATE     = 5,     -- Reward streak breakers streak x rate Arena Points
+    MMR_STREAK_LIMIT          = 3,     -- Streak must be at least X to award break rewards
+    MMR_BREAK_STREAK_RATE     = 5,     -- Reward streak breakers (streak * rate) Arena Points
     MMR_BREAK_STREAK_MULTIPL  = 1.3,   -- Exponential multiplier for streak break reward/loss
     MMR_ANNOUNCE_STREAK       = true,  -- Send world messages on new/broken streaks
     
