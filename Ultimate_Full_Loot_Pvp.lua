@@ -59,8 +59,8 @@ local CFG = {
     -- Gold filters
     --------------------------------------------------------------------
     SPLIT_GOLD_BETWEEN_CHESTS = true,
-    GOLD_PERCENT_MIN         = 100,     -- roll between MIN and MAX %
-    GOLD_PERCENT_MAX         = 100,    -- 50-100 % example
+    GOLD_PERCENT_MIN         = 100,      -- roll between MIN and MAX %
+    GOLD_PERCENT_MAX         = 100,      -- 50-100 % example
     GOLD_CAP_PER_KILL        = 25000000, -- 2500 g cap (0 = no cap)
     --------------------------------------------------------------------
     -- Numeric thresholds
@@ -81,7 +81,7 @@ local CFG = {
     --------------------------------------------------------------------
     CHEST_ENTRY           = 2069420,     -- chest template
     ITEM_DROP_PERCENT     = 100,         -- % of victim items to drop
-    DESPAWN_SEC           = 60,         -- chest lifetime (seconds)
+    DESPAWN_SEC           = 60,          -- chest lifetime (seconds)
 
     --------------------------------------------------------------------
     -- Context exclusions
@@ -90,6 +90,41 @@ local CFG = {
     IGNORE_SPIRIT_HEALER_RANGE= true,    -- apply range check below
     SPIRIT_HEALER_RANGE       = 20,      -- metres
     IGNORE_RESS_SICKNESS      = true,    -- skip if victim has aura 15007
+    
+    --------------------------------------------------------------------
+    -- MMR
+    --------------------------------------------------------------------
+    -- General MMR settings
+    MMR_ENABLED               = true,
+    STARTING_MMR              = 100,  -- Start MMR
+    MMR_GAIN                  = 5,    -- Rate at which players gain MMR
+    MMR_LOSS                  = 5,    -- Rate at which players lose MMR
+    MMR_ANNOUNCE_CHANGE       = true, -- Message players on MMR change
+    
+    MMR_DIMINISHING_RETURNS   = true,  -- Reduces MMR change if far from base MMR
+    MMR_DIM_RETURN_RATE       = 5,     -- Rate of reduction per 10 MMR difference
+  
+    -- MMR Reward Config
+    MMR_REWARDS               = true,  -- True to disable MMR rewards/losses
+    MMR_REWARD_THRESHOLD      = 10,    -- Min % delta req. for MMR reward/loss
+    
+    MMR_GOLD_REWARD           = true,  -- Kill high MMR player, earn more gold
+    MMR_GOLD_REWARD_RATIO     = 1.1,    -- Reward multiplier, MMR delta x ratio
+
+    MMR_HONOR_REWARD          = true, -- Kill high MMR player, earn honor
+    MMR_HONOR_LOSS            = true,  -- Die from low MMR player, lose honor
+    MMR_HONOR_RATE            = 10,    -- Reward/lose honor by MMR delta * rate
+    
+    MMR_BREAK_STREAK_REWARD   = true,  -- Reward killer of streak holders with Arena Points
+    MMR_BREAK_STREAK_LOSS     = false,  -- Lose arena points if killed while holding streak
+    MMR_STREAK_LIMIT          = 3,     -- Streak must be at least 3 to award break rewards
+    MMR_BREAK_STREAK_RATE     = 5,     -- Reward streak breakers streak x rate Arena Points
+    MMR_BREAK_STREAK_MULTIPL  = 1.3,   -- Exponential multiplier for streak break reward/loss
+    MMR_ANNOUNCE_STREAK       = true,   -- Send world messages on new/broken streaks
+    
+    -- MMR Back-End Setup
+    MMR_DB                    = 'acore_eluna',
+    MMR_TABLE                 = 'full_loot_pvp',
 
     --------------------------------------------------------------------
     -- Debug
@@ -212,7 +247,7 @@ local function BagFamily(item)
     return 0                                      -- unknown ⇒ treat as normal bag
 end
 
-local function dbg(msg)  if CFG.DEBUG then print("[PvPChest] "..msg) end end
+local function dbg(msg) if CFG.DEBUG then print("[PvPChest] "..msg) end end
 local function link(it)
     return string.format("|cffffffff|Hitem:%d|h[%s]|h|r",
         it:GetEntry(), it:GetItemLink():match("%[(.-)%]") or "item")
@@ -339,11 +374,13 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
             return false                        -- ignore items in prof bags
         end
     end
+	
     dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice))
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW)
         return false
     end
+	
     -- numeric thresholds (only if values known)
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
         return false
@@ -443,7 +480,7 @@ end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
 -------------------------------------------------------------- NEW multi-drop
-local function spawnChests(killer, victim, items,cfg)
+local function spawnChests(killer, victim, items, cfg)
     local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
     dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)")
     local totalChests = math.ceil(take / MAX_CHEST_ITEMS)
@@ -457,7 +494,15 @@ local function spawnChests(killer, victim, items,cfg)
     if cfg.GOLD_CAP_PER_KILL > 0 and rawGive > cfg.GOLD_CAP_PER_KILL then
         rawGive = cfg.GOLD_CAP_PER_KILL
     end
+    
     if rawGive > 0 then
+        if cfg.MMR_GOLD_REWARD then 
+            local mmrDelta = killer:GetData("MMR") - victim:GetData("MMR")
+            if mmrDelta > 0 then
+                local multiplier = math.max(1.0, 1 + (mmrDelta / 100) * (cfg.MMR_GOLD_REWARD_RATIO - 1))
+                rawGive = math.min(math.floor(rawGive * multiplier), victimGold)
+            end
+        end
         victim:ModifyMoney(-rawGive)
     end
 
@@ -527,6 +572,135 @@ local function spawnChests(killer, victim, items,cfg)
     end
 end
 
+---------------------------------------------------------------- MMR helper functions
+local function MMR_Load(player)
+    if player:GetData("MMR") then return end
+    local guid = player:GetGUIDLow()
+    local name = player:GetName()
+    CharDBQueryAsync(("SELECT `mmr`, `kills`, `deaths`, `streak` FROM `"..CFG.MMR_DB.."`.`"..CFG.MMR_TABLE.."` WHERE `guid` = "..guid), function(query)
+        local player = GetPlayerByName(name) -- Hack to re-fetch player object in callback
+        player:SetData("MMR", (query and query:GetUInt32(0)) or CFG.STARTING_MMR)
+        player:SetData("KILLS", (query and query:GetUInt32(1)) or 0)
+        player:SetData("DEATHS", (query and query:GetUInt32(2)) or 0)
+        player:SetData("STREAK", (query and query:GetUInt32(3)) or 0)
+    end)
+end
+
+local function MMR_Save(player)
+    CharDBExecute(string.format(
+        "INSERT INTO `%s`.`%s` VALUES (%d,%d,%d,%d,%d) ON DUPLICATE KEY UPDATE "..
+        "mmr=VALUES(mmr),kills=VALUES(kills),deaths=VALUES(deaths),streak=VALUES(streak)",
+        CFG.MMR_DB, CFG.MMR_TABLE, player:GetGUIDLow(),
+        player:GetData("MMR"), player:GetData("KILLS"),
+        player:GetData("DEATHS"), player:GetData("STREAK")
+    ))
+end
+
+local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
+    local mmrDelta = math.abs(victim:GetData("MMR") - killer:GetData("MMR"))
+
+    if mmrDelta < (killer:GetData("MMR") * cfg.MMR_REWARD_THRESHOLD / 100) then return end
+    
+    if (cfg.MMR_HONOR_REWARD or cfg.MMR_HONOR_LOSS) then -- High MMR targets gain less honor on kill, low MMR targets gain more honor
+        local mmrDiff = victim:GetData("MMR") - killer:GetData("MMR")
+        local honorChange = math.min(
+             math.floor((mmrDiff > 0 and mmrDiff or (mmrDiff < 0 and math.abs(mmrDiff) * 0.1 or 1)) * cfg.MMR_HONOR_RATE), 
+            victim:GetHonorPoints()
+        )
+       
+        if honorChange > 0 then
+            if cfg.MMR_HONOR_REWARD then
+                killer:ModifyHonorPoints(honorChange)
+                killer:SendBroadcastMessage("You have earned "..honorChange.." "..GetItemLink(43308)..".") 
+            end 
+            if cfg.MMR_HONOR_LOSS then
+                victim:ModifyHonorPoints(-honorChange)
+                victim:SendBroadcastMessage("You have lost "..honorChange.." "..GetItemLink(43308)..".")
+            end
+        end
+    end
+
+    if cfg.MMR_ANNOUNCE_STREAK then
+        local gender = "him" if killer:GetGender() == 1 then gender = "her" end
+        local newStreakIcon = "|TInterface/ICONS/ability_hunter_markedfordeath:15:15:0:0|t "
+        
+        if killer:GetData("STREAK") >= CFG.MMR_STREAK_LIMIT then
+            SendWorldMessage(newStreakIcon.."Player "..killer:GetName().." has an open-world PvP kill streak of "..killer:GetData("STREAK").."! Kill "..gender.." for extra PvP rewards. "..newStreakIcon)
+            killer:SendBroadcastMessage("Careful! Other players can now earn your "..GetItemLink(43307).." if they kill you in open-world PvP.")
+        end
+       
+        local lostStreakIcon = "|TInterface/ICONS/ability_rogue_feigndeath:15:15:0:0|t "
+        if victim:GetData("STREAK") >= CFG.MMR_STREAK_LIMIT then
+            SendWorldMessage(lostStreakIcon.." Player "..killer:GetName().." just broke "..victim:GetName().."'s streak of "..victim:GetData("STREAK").." kills and earned extra PvP rewards. "..lostStreakIcon)
+        end
+    end
+    
+    if (cfg.MMR_BREAK_STREAK_REWARD or cfg.MMR_BREAK_STREAK_LOSS) and victim:GetData("STREAK") >= cfg.MMR_STREAK_LIMIT then -- Award Arena Points reward on breaking streak
+        local arenaPointsChange = math.min(math.floor(victim:GetData("STREAK")^cfg.MMR_BREAK_STREAK_MULTIPL * cfg.MMR_BREAK_STREAK_RATE), victim:GetArenaPoints())
+        if cfg.MMR_BREAK_STREAK_REWARD then
+            killer:ModifyArenaPoints(arenaPointsChange)
+            killer:SendBroadcastMessage("You have earned "..arenaPointsChange.." "..GetItemLink(43307)..".")
+        end
+        if cfg.MMR_BREAK_STREAK_LOSS then
+            victim:ModifyArenaPoints(-arenaPointsChange)
+            victim:SendBroadcastMessage("You have lost "..arenaPointsChange.." "..GetItemLink(43307)..".")
+        end
+    end
+
+    dbg(string.format("MMR Rewards/losses processed for killer %s, victim %s", killer:GetName(), victim:GetName()))
+end
+
+local function MMR_Update(killer, victim, cfg)
+    local killerMMR = killer:GetData("MMR")
+    local victimMMR = victim:GetData("MMR")
+    
+    local mmrGain = cfg.MMR_GAIN
+    local mmrLoss = cfg.MMR_LOSS
+    
+    if cfg.MMR_REWARDS then MMR_ProcessRewardsAndLosses(killer, victim, cfg) end
+    
+    if cfg.MMR_DIMINISHING_RETURNS then
+        local mmrDifference = victimMMR - killerMMR
+        local intervals = math.floor(math.abs(mmrDifference) / CFG.STARTING_MMR)
+        
+        if mmrDifference > 0 then -- Killing higher MMR = more reward
+            mmrGain = mmrGain + (intervals * cfg.MMR_DIM_RETURN_RATE)
+            mmrLoss = mmrLoss + (intervals * cfg.MMR_DIM_RETURN_RATE)
+        else -- Killing lower MMR = less reward
+            mmrGain = math.max(1, mmrGain - (intervals * cfg.MMR_DIM_RETURN_RATE))
+            mmrLoss = math.max(1, mmrLoss - (intervals * cfg.MMR_DIM_RETURN_RATE))
+        end
+    end
+    
+    killer:SetData("MMR", killerMMR + mmrGain)
+    killer:SetData("KILLS", killer:GetData("KILLS") + 1)
+    killer:SetData("STREAK", killer:GetData("STREAK") + 1)
+    victim:SetData("MMR", math.max(0, victimMMR - mmrLoss))
+    victim:SetData("DEATHS", victim:GetData("DEATHS") + 1)
+    victim:SetData("STREAK", 0)
+  
+    if cfg.MMR_ANNOUNCE_CHANGE then 
+        local icon = "|TInterface/ICONS/achievement_pvp_a_h:15:15:0:0|t "
+        victim:SendBroadcastMessage(icon.."Your open-world PvP MMR has decreased by "..mmrLoss.." to "..victim:GetData("MMR")..". "..icon)
+        killer:SendBroadcastMessage(icon.."Your open-world PvP MMR has increased by "..mmrGain.." to "..killer:GetData("MMR")..". "..icon)
+    end
+    
+    dbg(string.format("MMR UPDATE: Killer "..killer:GetName()..", GUIDLow "..killer:GetGUIDLow()..", updated MMR from "..killerMMR.." to "..killer:GetData("MMR")))
+    dbg(string.format("MMR UPDATE: Victim "..victim:GetName()..", GUIDLow "..victim:GetGUIDLow()..", updated MMR from "..victimMMR.." to "..victim:GetData("MMR")))
+end
+
+-------------------------------------------------------------- Load/save MMR to persistent storage
+if CFG.MMR_ENABLED then
+    CharDBExecute("CREATE DATABASE IF NOT EXISTS `"..CFG.MMR_DB.."`") -- Create custom db if it doesn't already exist
+
+    CharDBExecute("CREATE TABLE IF NOT EXISTS `" .. CFG.MMR_DB .. "`.`" .. CFG.MMR_TABLE .. "` (" ..
+        "`guid` INT PRIMARY KEY, `mmr` INT, `kills` INT, `deaths` INT, `streak` INT);")
+
+    for _, player in pairs(GetPlayersInWorld()) do MMR_Load(player) end -- Load MMR on reload eluna
+    RegisterPlayerEvent(4, function(_, player) MMR_Save(player) end)    -- Save MMR on player save
+    RegisterPlayerEvent(26, function(_, player) MMR_Save(player) end)   -- Save MMR on logout
+    RegisterPlayerEvent(28, function(_, player) MMR_Load(player)  end)  -- Load MMR on login/map change
+end
 
 ---------------------------------------------------------------- main callback
 local function OnKillPlayer(event, killer, victim)
@@ -579,6 +753,10 @@ local function OnKillPlayer(event, killer, victim)
         return
     end
 
+    if CFG.MMR_ENABLED then -- Consider moving this below "spawnChests" to bar MMR changes from killing players without a single item
+        MMR_Update(killer, victim, cfg) -- Update MMR in cache only if requirements are fulfilled
+    end
+    
     local items = gatherItems(victim, cfg)
     if #items == 0 then
         dbg("No items to drop")
@@ -592,5 +770,3 @@ end
 
 RegisterPlayerEvent(6, OnKillPlayer)
            -- 6 = ON_KILL_PLAYER
-
-
