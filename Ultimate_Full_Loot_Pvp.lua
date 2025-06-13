@@ -82,6 +82,7 @@ local CFG = {
     CHEST_ENTRY           = 2069420,     -- chest template
     ITEM_DROP_PERCENT     = 100,         -- % of victim items to drop
     DESPAWN_SEC           = 60,          -- chest lifetime (seconds)
+    CREATE_DEFAULT_CHEST  = true,        -- create initial gameobject SQL
 
     --------------------------------------------------------------------
     -- Context exclusions
@@ -156,6 +157,25 @@ local ZoneOverrides = {
 --========================================================================--
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
+-- Ensure chest exists before proceeding
+if CFG.ENABLE_MOD then
+    local ChestExists = WorldDBQuery("SELECT `name` FROM `gameobject_template` WHERE `entry` = "..CFG.CHEST_ENTRY)
+    if not ChestExists then
+        if CFG.CREATE_DEFAULT_CHEST then
+            WorldDBExecute("INSERT IGNORE INTO `gameobject_template` "..
+                "(`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, "..
+                "`Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, "..
+                "`Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, "..
+                "`Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) "..
+                "VALUES ("..CFG.CHEST_ENTRY..", 3, 259, 'Spoils of War', '', '', '', 1, 1634, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', '', 0)")
+            RunCommand("server restart 30 Restarting to load in required resources for [PvPChest] script.")
+            error("[PvPChest] - Chest gameobject created. Restart required!") -- Stops further execution
+        else
+            error("[PvPChest] - Chest gameobject doesn't exist. Create gameobject entry "..CFG.CHEST_ENTRY.."!") -- Stops further execution
+        end
+    end
+end
+
 -- shallow-copy defaults + apply overrides
 local function GetCFGForZone(zoneId)
   local cfg = {}
