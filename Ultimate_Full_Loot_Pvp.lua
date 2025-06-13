@@ -137,15 +137,17 @@ local CFG = {
     MMR_GOLD_REWARD           = true,  -- Kill high MMR player, earn more gold
     MMR_GOLD_REWARD_RATIO     = 1.1,   -- Reward multiplier, MMR delta x ratio
 
-    MMR_HONOR_REWARD          = true,  -- Earn honor on kills. Earn more if killer's MMR lower than victim's
-    MMR_HONOR_LOSS            = true,  -- Lose honor on death. Lose less if victim's MMR lower than killer's
-    MMR_HONOR_RATE            = 10,    -- Reward/lose honor by MMR (delta * rate)
+    MMR_KILL_REWARD           = true,  -- Earn currency on kills. Earn more if killer's MMR lower than victim's
+    MMR_KILL_LOSS             = true,  -- Lose currency on death. Lose less if victim's MMR lower than killer's
+    MMR_KILL_RATE             = 10,    -- Reward/lose currency by MMR (delta * rate)
+    MMR_KILL_ITEM_ID          = 43308, -- Kill reward currency's item ID. Default is honor (43308)
     
-    MMR_BREAK_STREAK_REWARD   = true,  -- Reward killer of streak holders with Arena Points
-    MMR_BREAK_STREAK_LOSS     = true,  -- Lose arena points if killed while holding streak
+    MMR_STREAK_REWARD         = true,  -- Reward killer of streak holders with secondary currency
+    MMR_STREAK_LOSS           = true,  -- Lose secondary currency if killed while holding streak
+    MMR_STREAK_ITEM_ID        = 43307, -- Streak reward currency's item ID. Default is arena points (43307) 
     MMR_STREAK_LIMIT          = 3,     -- Streak must be at least X to award break rewards
-    MMR_BREAK_STREAK_RATE     = 5,     -- Reward streak breakers (streak * rate) Arena Points
-    MMR_BREAK_STREAK_MULTIPL  = 1.3,   -- Exponential multiplier for streak break reward/loss
+    MMR_STREAK_RATE           = 5,     -- Reward streak breakers (streak * rate) currency
+    MMR_STREAK_MULTIPL        = 1.3,   -- Exponential multiplier for streak break reward/loss
     MMR_ANNOUNCE_STREAK       = true,  -- Send world messages on new/broken streaks
     
     -- MMR Back-End Setup
@@ -644,28 +646,49 @@ local function MMR_Save(player)
     ))
 end
 
+
+local function MMR_GetCurrencyCount(player, itemId)
+    if itemId == 43308 then return player:GetHonorPoints()
+    elseif itemId == 43307 then return player:GetArenaPoints()
+    else return player:GetItemCount(itemId, true) end
+end
+
+local function MMR_RemoveItem(victim, itemId, actualGained)
+    if itemId == 43308 then victim:ModifyHonorPoints(-actualGained)
+    elseif itemId == 43307 then victim:ModifyArenaPoints(-actualGained)
+    else victim:RemoveItem(itemId, actualGained) end
+    victim:SendBroadcastMessage("You have lost "..actualGained.." "..GetItemLink(itemId)..".")
+end
+
+local function MMR_CurrencyTransactions(killer, victim, rewardFlag, lossFlag, itemId, amount)
+    if rewardFlag then
+        local initialCount = MMR_GetCurrencyCount(killer, itemId)
+        
+        if itemId == 43308 then killer:ModifyHonorPoints(amount)
+        elseif itemId == 43307 then killer:ModifyArenaPoints(amount)
+        else killer:AddItem(itemId, amount) end
+        
+        local actualGained = MMR_GetCurrencyCount(killer, itemId) - initialCount
+        
+        if actualGained > 0 then
+            killer:SendBroadcastMessage("You have earned "..actualGained.." "..GetItemLink(itemId)..".")
+            if lossFlag then MMR_RemoveItem(victim, itemId, actualGained) end
+        end
+    elseif lossFlag then MMR_RemoveItem(victim, itemId, amount) end
+end
+
 local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
     local mmrDelta = math.abs(victim:GetData("MMR") - killer:GetData("MMR"))
-
     if mmrDelta < (killer:GetData("MMR") * cfg.MMR_REWARD_THRESHOLD / 100) then return end
     
-    if (cfg.MMR_HONOR_REWARD or cfg.MMR_HONOR_LOSS) then -- High MMR targets gain less honor on kill, low MMR targets gain more honor
+    if (cfg.MMR_KILL_REWARD or cfg.MMR_KILL_LOSS) then -- High MMR killers earn less, low MMR killers earn more
         local mmrDiff = victim:GetData("MMR") - killer:GetData("MMR")
-        local honorChange = math.min(
-             math.floor((mmrDiff > 0 and mmrDiff or (mmrDiff < 0 and math.abs(mmrDiff) * 0.1 or 1)) * cfg.MMR_HONOR_RATE), 
-            victim:GetHonorPoints()
+        local KillItemIDChange = math.min(
+            math.floor((mmrDiff > 0 and mmrDiff or (mmrDiff < 0 and math.abs(mmrDiff) * 0.1 or 1)) * cfg.MMR_KILL_RATE), 
+            MMR_GetCurrencyCount(victim, cfg.MMR_KILL_ITEM_ID)
         )
-       
-        if honorChange > 0 then
-            if cfg.MMR_HONOR_REWARD then
-                killer:ModifyHonorPoints(honorChange)
-                killer:SendBroadcastMessage("You have earned "..honorChange.." "..GetItemLink(43308)..".") 
-            end 
-            if cfg.MMR_HONOR_LOSS then
-                victim:ModifyHonorPoints(-honorChange)
-                victim:SendBroadcastMessage("You have lost "..honorChange.." "..GetItemLink(43308)..".")
-            end
-        end
+        
+        MMR_CurrencyTransactions(killer, victim, cfg.MMR_KILL_REWARD, cfg.MMR_KILL_LOSS, cfg.MMR_KILL_ITEM_ID, KillItemIDChange)
     end
 
     if cfg.MMR_ANNOUNCE_STREAK then
@@ -674,7 +697,7 @@ local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
         
         if killer:GetData("STREAK") >= CFG.MMR_STREAK_LIMIT then
             SendWorldMessage(newStreakIcon.."Player "..killer:GetName().." has an open-world PvP kill streak of "..killer:GetData("STREAK").."! Kill "..gender.." for extra PvP rewards. "..newStreakIcon)
-            killer:SendBroadcastMessage("Careful! Other players can now earn your "..GetItemLink(43307).." if they kill you in open-world PvP.")
+            killer:SendBroadcastMessage("Careful! Other players can now earn your "..GetItemLink(cfg.MMR_STREAK_ITEM_ID).." if they kill you in open-world PvP.")
         end
        
         local lostStreakIcon = "|TInterface/ICONS/ability_rogue_feigndeath:15:15:0:0|t "
@@ -683,16 +706,13 @@ local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
         end
     end
     
-    if (cfg.MMR_BREAK_STREAK_REWARD or cfg.MMR_BREAK_STREAK_LOSS) and victim:GetData("STREAK") >= cfg.MMR_STREAK_LIMIT then -- Award Arena Points reward on breaking streak
-        local arenaPointsChange = math.min(math.floor(victim:GetData("STREAK")^cfg.MMR_BREAK_STREAK_MULTIPL * cfg.MMR_BREAK_STREAK_RATE), victim:GetArenaPoints())
-        if cfg.MMR_BREAK_STREAK_REWARD then
-            killer:ModifyArenaPoints(arenaPointsChange)
-            killer:SendBroadcastMessage("You have earned "..arenaPointsChange.." "..GetItemLink(43307)..".")
-        end
-        if cfg.MMR_BREAK_STREAK_LOSS then
-            victim:ModifyArenaPoints(-arenaPointsChange)
-            victim:SendBroadcastMessage("You have lost "..arenaPointsChange.." "..GetItemLink(43307)..".")
-        end
+    if (cfg.MMR_STREAK_REWARD or cfg.MMR_STREAK_LOSS) and victim:GetData("STREAK") >= cfg.MMR_STREAK_LIMIT then
+        local StreakItemIDChange = math.min(
+            math.floor(victim:GetData("STREAK")^cfg.MMR_STREAK_MULTIPL * cfg.MMR_STREAK_RATE), 
+            MMR_GetCurrencyCount(victim, cfg.MMR_STREAK_ITEM_ID)
+        )
+            
+        MMR_CurrencyTransactions(killer, victim, cfg.MMR_STREAK_REWARD, cfg.MMR_STREAK_LOSS, cfg.MMR_STREAK_ITEM_ID, StreakItemIDChange)
     end
 
     dbg(string.format("MMR Rewards/losses processed for killer %s, victim %s", killer:GetName(), victim:GetName()))
