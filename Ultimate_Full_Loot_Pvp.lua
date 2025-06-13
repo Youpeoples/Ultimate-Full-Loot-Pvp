@@ -230,10 +230,6 @@ local NEUTRAL_CITY_AREAS = {
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
 local DefaultCFG = CFG  
--- one-shot “you’re in danger” tracker
-local ZoneWarned = {}    -- [playerGuidLow] = { [zoneId]=true }
-
-
 -- Ensure chest exists before proceeding
 if CFG.ENABLE_MOD then
     local ChestExists = WorldDBQuery("SELECT `name` FROM `gameobject_template` WHERE `entry` = "..CFG.CHEST_ENTRY)
