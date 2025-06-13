@@ -16,8 +16,8 @@ local CFG = {
     --------------------------------------------------------------------
     -- Map / zone filters           ( _LIST = {}  :: Allow All )
     --------------------------------------------------------------------
-    MAP_ALLOWLIST              = {[0]=true},    -- e.g. { ["0"]=true,},
-    MAP_BLOCKLIST              = {},            -- e.g. { ["1"]=true,},
+    MAP_ALLOWLIST              = {[0]=true},    -- e.g. { [0]=true,},
+    MAP_BLOCKLIST              = {},            -- e.g. { [1]=true,},
     ZONE_ALLOWLIST             = {[47]=true},   --[47]Hinterlands
     ZONE_BLOCKLIST             = {[4197]=true}, --[4197]Wintergrasp    
 
