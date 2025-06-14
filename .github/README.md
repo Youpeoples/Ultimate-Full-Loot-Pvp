@@ -26,8 +26,9 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
 
 * **PvP Loot Hooks** – External scripts can register to react to loot events.
   
+* **GM Commands** - instantly apply test configuration changes in-game without restarting the server or reloading scripts.
+  
 * **Full DEBUG mode** – verbose console output for every step.
-
 ---
 
 ## Installation
