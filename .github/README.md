@@ -41,6 +41,7 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | Option | Purpose |
 |--------|---------|
 | `ENABLE_MOD` | Master on/off switch |
+| `NOTIFY_PLAYER_OF_COMMAND ` | Login message on/off |
 | `ALLOW_PLAYER_COMMAND ` | Player access to info regarding standing location |
 | `MAP_ALLOWLIST / MAP_BLOCKLIST` | Restrict to specific maps (use IDs) |
 | `ZONE_ALLOWLIST / ZONE_BLOCKLIST` | Restrict to zones |
@@ -67,11 +68,21 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_STACK_SIZE_ABOVE` | Skip stacks larger than this size |
 | `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore |
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
+| `IGNORE_ENCHANTED_EQUIPPED` | Skip enchanted equipped items |
+| `IGNORE_NON_TRADABLE_ITEMS` | Skip non-tradable items |
+| `IGNORE_TRADABLE_ITEMS` |  Skip tradable items |
+| `IGNORE_REQUIREDLEVEL_BELOW` | Skip items below this required level |
+| `IGNORE_AFK_VICTIM` | Skip AFK victims |
+| `IGNORE_AURA_ON_KILLER` | Skip if killer has listed aura  |
+| `IGNORE_AURA_ON_VICTIM` | Skip if victim has listed aura |
+| `IGNORE_IF_KILLER_DRUNK` | Skip if killer is drunk |
+| `IGNORE_IF_VICTIM_DRUNK` | Skip if victim is drunk |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
 | `ITEM_DROP_PERCENT` | % of eligible items to drop |
 | `IGNORE_CAPITALS` | Skip Faction Capitals |
 | `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
 | `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
+| `IGNORE_ARENA` | 	Disable in Arena |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
 | `SPIRIT_HEALER_RANGE` | 	Range for spirit-healer check (m) |
 | `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |

@@ -2,23 +2,29 @@
 --                      ULTIMATE FULL LOOT PVP                            --
 --========================================================================--
 
--- Below CFG Block, you will find INDIVIDUAL ZONE OVERRIDES.
--- There, you can override settings on a per-zone basis.
--- Any zone setting not explicitly listed in INDIVIDUAL ZONE OVERRIDES 
--- will inherit the default values defined within CFG.
+-- ───────────────────────────────────────────────────────────────────────────
+--  OVERRIDE HIERARCHY
+--  1. CFG  – global defaults
+--  2. ZONE_OVERRIDES   – per-zone tweaks; only keys listed are replaced
+--  3. AREA_OVERRIDES   – per-area tweaks; sit *inside* their zone and trump both
+--
+--  Anything omitted at a lower level automatically falls back to the level
+--  above it (Area → Zone → CFG).
+-- ───────────────────────────────────────────────────────────────────────────
 
 local CFG = {
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Master toggle
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     ENABLE_MOD                 = true,          -- Turn System on/off
-     --------------------------------------------------------------------
+     -- ------------------------------------------------------------------
     -- Command toggle. ( Allows players to see exact risk stats of zone)
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
+    NOTIFY_PLAYER_OF_COMMAND   = true,          -- Login Message on/off
     ALLOW_PLAYER_COMMAND       = true,          -- Turn .ultpvp on/off
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Map / zone filters       ( _LIST = {}  :: Allow All )
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     MAP_ALLOWLIST              = {},             -- e.g. { [0]=true,},
     MAP_BLOCKLIST              = {},             -- e.g. { [1]=true,},
     ZONE_ALLOWLIST             = {},             -- e.g. { [0]=false,},
@@ -26,33 +32,39 @@ local CFG = {
     AREA_ALLOWLIST             = {},             -- e.g. { [1]=false,},
     AREA_BLOCKLIST             = {},             -- e.g. { [0]=true,},
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Level restrictions
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     MIN_LEVEL                  = 1,
     MAX_LEVEL                  = 80,
     MIN_LEVEL_DIFF             = 0,       
     MAX_LEVEL_DIFF             = 4,
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Container inclusion
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     INCLUDE_EQUIPPED           = true,
     INCLUDE_BACKPACK           = true,     -- bag 0
     INCLUDE_BAGS               = true,     -- bags 1-4
     INCLUDE_BANK_ITEMS         = false,    -- (future)
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Item-type filters
-    --------------------------------------------------------------------
-    IGNORE_QUEST_ITEMS         = true,
-    IGNORE_CONSUMABLES         = false,
-    IGNORE_CONJURED            = false,     --Soul/Health/Mana stones 
-    IGNORE_REAGENTS            = false,
-    IGNORE_KEYS                = true,
-    IGNORE_PROFESSION_BAG_SLOTS= true,
-    IGNORE_HEIRLOOMS           = true,
-    IGNORE_UNIQUE_EQUIPPED     = false,
-    IGNORE_SOULBOUND           = false,
+    -- ------------------------------------------------------------------
+    ITEM_DROP_PERCENT           = 100,     -- % of victim items to drop
+
+    IGNORE_BOP                  = false,   -- ignore bind on pickup
+    IGNORE_CONJURED             = false,   -- Soul/Health/Mana stones
+    IGNORE_CONSUMABLES          = false,
+    IGNORE_ENCHANTED_EQUIPPED   = true,    -- ignores equipped enchanted items
+    IGNORE_HEIRLOOMS            = true,
+    IGNORE_KEYS                 = true,
+    IGNORE_NON_TRADABLE_ITEMS   = true,    -- ignore items that *cannot* be traded
+    IGNORE_PROFESSION_BAG_SLOTS = true,    
+    IGNORE_QUEST_ITEMS          = true,
+    IGNORE_REAGENTS             = false,
+    IGNORE_SOULBOUND            = false,
+    IGNORE_TRADABLE_ITEMS       = false,   -- ignore items that *can* be traded
+    IGNORE_UNIQUE_EQUIPPED      = false,
     IGNORE_QUALITY = {                 
                            [1] = false,    -- ignore common 
                            [2] = false,    -- ignore uncommon
@@ -61,7 +73,6 @@ local CFG = {
                            [5] = true,     -- ignore legendary
     },
 
-    IGNORE_BOP                 = false,   -- ignore bind on pickup 
 
     IGNORE_EQUIPPED_SLOTS      = {        
                           [0]  = false,   -- Head
@@ -84,50 +95,55 @@ local CFG = {
                           [17] = false,   -- Ranged
                           [18] = false,   -- Tabard
     },
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Gold filters
-    --------------------------------------------------------------------
-    SPLIT_GOLD_BETWEEN_CHESTS  = true,
-    GOLD_PERCENT_MIN           = 100,      -- roll between MIN and MAX %
-    GOLD_PERCENT_MAX           = 100,      -- 50-100 % example
+    -- ------------------------------------------------------------------
     GOLD_CAP_PER_KILL          = 25000000, -- 2500 g cap (0 = no cap)
-    --------------------------------------------------------------------
+    GOLD_PERCENT_MAX           = 100,      -- 50-100 % example
+    GOLD_PERCENT_MIN           = 100,      -- roll between MIN and MAX %
+    SPLIT_GOLD_BETWEEN_CHESTS  = true,
+    -- ------------------------------------------------------------------
     -- Numeric thresholds
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     IGNORE_VENDOR_VALUE_BELOW  = 0,        -- copper
-    IGNORE_ITEMLEVEL_BELOW     = 0,        -- the hidden rating(NOT RQ.LVL)
+    IGNORE_ITEMLEVEL_BELOW     = 0,        -- hidden power rating
+    IGNORE_REQUIREDLEVEL_BELOW = 0,        -- required level to equip
     IGNORE_STACK_SIZE_ABOVE    = 0,        -- 0 = off
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Explicit allow / deny
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
+    CUSTOM_ALLOW_IDS           = {},       -- overrides all ignore checks
     CUSTOM_IGNORE_IDS          = {[6948]=true,   --Hearthstone
                                   [5976]=true,   --Guild Tabard 
                                  },
-    CUSTOM_ALLOW_IDS           = {},       -- overrides all ignore checks
     CUSTOM_IGNORE_CLASSES      = {},       -- e.g. { ["0"]=true,},
    
-    --------------------------------------------------------------------
-    -- Chest & loot parameters
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
+    -- Chest arameters
+    -- ------------------------------------------------------------------
     CHEST_ENTRY               = 2069420,   -- chest template
-    ITEM_DROP_PERCENT         = 100,       -- % of victim items to drop
     DESPAWN_SEC               = 60,        -- chest lifetime (seconds)
     CREATE_DEFAULT_CHEST      = true,      -- create initial gameobject SQL
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Context exclusions
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
+    IGNORE_AFK_VICTIM         = false,    -- ignore kills if victim is flagged AFK
+    IGNORE_AURA_ON_KILLER     = {},       -- ignore on killer aura id check
+    IGNORE_AURA_ON_VICTIM     = {},       -- ignore on victim aura id check
+    IGNORE_ARENA              = true,     -- skip kills inside arenas 
     IGNORE_BATTLEGROUND       = true,     -- skip BG kills
+    IGNORE_CAPITALS           = true,     -- skip kills in faction capitals
+    IGNORE_IF_KILLER_DRUNK    = false,    -- why not?
+    IGNORE_IF_VICTIM_DRUNK    = false,    -- its only fair.
+    IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
+    IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
     IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
     SPIRIT_HEALER_RANGE       = 20,       -- metres
-    IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
-    IGNORE_CAPITALS           = true,     -- skip kills in faction capitals
-    IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
-    
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- MMR
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- General MMR settings
     MMR_ENABLED               = true,  -- Enable/disable MMR extension
     STARTING_MMR              = 100,   -- Start MMR
@@ -162,9 +178,9 @@ local CFG = {
     MMR_DB                    = 'acore_eluna',
     MMR_TABLE                 = 'full_loot_pvp',
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- Debug
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     DEBUG                     = false,
 }
 
@@ -197,9 +213,9 @@ local AreaOverrides = {               -- Example
     },
     -- add more areas as needed…
 }
---------------------------------------------------------------------
+-- ------------------------------------------------------------------
 -- IGNORE_CAPITALS & IGNORE_NEUTRAL_CITIES Granular Tuning
---------------------------------------------------------------------
+-- ------------------------------------------------------------------
 local CAPITAL_AREAS = {
     [1637] = true,  -- Orgrimmar
     [1497] = true,  -- Undercity
@@ -275,7 +291,7 @@ local LootStore = {}
 local MAX_CHEST_ITEMS = 16  -- engine shows max 16 loot slots
 local SPIRIT_HEALER_IDS = {[6491]=true,[29259]=true,[32537]=true}
 
----------------------------------------------------------------- utils + debug
+-- -------------------------------------------------------------- utils + debug
 local function OnLootStateChange(event, go, state)
     local guid = go:GetGUIDLow()
     local list = LootStore[guid]
@@ -320,30 +336,6 @@ local function ModIsActiveHere(player, cfg)
     return true
 end
 -- ------------------------------------------------------------------
--- Cross-Lua bit-and helper
--- ------------------------------------------------------------------
-local band
-if bit and bit.band then               -- LuaJIT / Lua 5.1 “bit” lib
-    band = bit.band
-elseif bit32 and bit32.band then       -- Lua 5.2 “bit32” lib
-    band = bit32.band
-else                                   -- pure-Lua fallback
-    ---@param a integer @unsigned
-    ---@param b integer @unsigned
-    function band(a, b)
-        local res, bitval = 0, 1
-        while a > 0 or b > 0 do
-            if (a % 2 == 1) and (b % 2 == 1) then
-                res = res + bitval      -- set this bit
-            end
-            a     = math.floor(a / 2)
-            b     = math.floor(b / 2)
-            bitval = bitval * 2
-        end
-        return res
-    end
-end
--- ------------------------------------------------------------------
 -- Return bag-family mask for an item if the build supports it
 --  0  = regular bag
 -- >0 = profession-specific
@@ -375,7 +367,7 @@ local function fmtCoins(c)
     if co>0 or #t==0 then t[#t+1]=co.." c" end
     return table.concat(t," ")
 end
------------------------------------------------------------ helper: spirit range
+-- --------------------------------------------------------- helper: spirit range
 local function IsNearSpiritHealer(plr, dist)
     dist=dist or 20
     for _,cr in pairs(plr:GetCreaturesInRange(dist)) do
@@ -384,7 +376,15 @@ local function IsNearSpiritHealer(plr, dist)
     return false
 end
 
----------------------------------------------------------------- item gatherer
+-- ------------------------------------------------------------enchanted helper
+local function isEnchanted(it)
+    for slot = 0, 15 do
+        local ok, id = pcall(it.GetEnchantmentId, it, slot)
+        if ok and id and id > 0 then return true end
+    end
+    return false
+end
+-- -------------------------------------------------------------- item gatherer
 local function ShouldDropItem(it, owner, bagSlot, cfg)
     if not it then return false end    
     -- grab template if available
@@ -443,6 +443,16 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
         ilvl = tpl:GetItemLevel()
     end
 
+    --required level
+    local reqLvl = 0
+    if it.GetRequiredLevel then
+        reqLvl = it:GetRequiredLevel()
+    elseif tpl and tpl.GetRequiredLevel then
+        reqLvl = tpl:GetRequiredLevel()
+    end
+
+    local tradable = it.CanBeTraded and it:CanBeTraded() or false  
+
       -- debug item level
     dbg(string.format("Checking item %d: ItemLevel = %d", entry, ilvl))
 
@@ -454,37 +464,95 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
 
       -- debug item level
     dbg(string.format("Checking item %d: uniqueEq = %s", entry,tostring(uniqueEq)))
-    -------------------------------------------------------------
+    -- -----------------------------------------------------------
     -- explicit allow / deny
-    -------------------------------------------------------------
-    if cfg.CUSTOM_ALLOW_IDS[entry] then return true end
-    if cfg.CUSTOM_IGNORE_IDS[entry] then return false end
+    -- -----------------------------------------------------------
+    if cfg.CUSTOM_ALLOW_IDS[entry] then
+        dbg(("Allow – item %d is in CUSTOM_ALLOW_IDS"):format(entry))
+        return true
+    end
+
+    if cfg.CUSTOM_IGNORE_IDS[entry] then
+        dbg(("Abort – item %d is in CUSTOM_IGNORE_IDS"):format(entry))
+        return false
+    end
+    -- conjured ------------------------------------------------------------
     if cfg.IGNORE_CONJURED and it:IsConjuredConsumable() then
         dbg("  → skipped: conjured consumable") return false
     end
-    -- soul-bound
-    if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then return false end
-
-    -- quest flag (0x0004) – only if flags known
-    if cfg.IGNORE_QUEST_ITEMS and band(flags, 0x0004) ~= 0 then return false end
-
-    -- class / subclass based filters
-    if cfg.IGNORE_CONSUMABLES     and class == 0                       then return false end
-    if cfg.IGNORE_REAGENTS        and (class == 5 or class == 9)       then return false end
-    if cfg.IGNORE_KEYS            and class == 13                      then return false end
-    if cfg.IGNORE_HEIRLOOMS       and quality == 7                     then return false end
-    if cfg.IGNORE_UNIQUE_EQUIPPED and uniqueEq                         then return false end
-        -- quality / BoP filters ----------------------------------------
-    if cfg.IGNORE_QUALITY[quality] then return false end
-    if cfg.IGNORE_BOP and tpl and tpl.GetBonding and tpl:GetBonding() == 1 then
+    -- soul-bound ----------------------------------------------------------
+    if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then
+        dbg("Abort – soul-bound item, IGNORE_SOULBOUND=true")
         return false
     end
-    -- profession-bag slots (bags 1-4 only) -----------------------------
+
+    -- quest item ----------------------------------------------------------
+    if cfg.IGNORE_QUEST_ITEMS and tpl and tpl.GetBonding then
+        local b = tpl:GetBonding()
+        if b == 4 or b == 5 then
+            dbg(("Abort – quest item (bonding %d), IGNORE_QUEST_ITEMS=true"):format(b))
+            return false
+        end
+    end
+
+    -- class / subclass–based filters -------------------------------------
+    if cfg.IGNORE_CONSUMABLES and class == 0 then
+        dbg("Abort – consumable, IGNORE_CONSUMABLES=true")
+        return false
+    end
+
+    if cfg.IGNORE_REAGENTS and (class == 5 or class == 9) then
+        dbg(("Abort – reagent class %d, IGNORE_REAGENTS=true"):format(class))
+        return false
+    end
+
+    if cfg.IGNORE_KEYS and class == 13 then
+        dbg("Abort – key item, IGNORE_KEYS=true")
+        return false
+    end
+
+    if cfg.IGNORE_HEIRLOOMS and quality == 7 then
+        dbg("Abort – heirloom, IGNORE_HEIRLOOMS=true")
+        return false
+    end
+
+    if cfg.IGNORE_UNIQUE_EQUIPPED and uniqueEq then
+        dbg("Abort – unique-equipped item, IGNORE_UNIQUE_EQUIPPED=true")
+        return false
+    end
+
+    if cfg.IGNORE_ENCHANTED_EQUIPPED and isEnchanted(it) then
+        dbg("Abort – enchanted item, IGNORE_ENCHANTED_EQUIPPED=true")
+        return false
+    end
+
+    if cfg.IGNORE_TRADABLE_ITEMS and tradable then
+        dbg("Abort – tradable item, IGNORE_TRADABLE_ITEMS=true")
+        return false
+    end
+
+    if cfg.IGNORE_NON_TRADABLE_ITEMS and not tradable then
+        dbg("Abort – non-tradable item, IGNORE_NON_TRADABLE_ITEMS=true")
+        return false
+    end
+
+    -- quality / BoP filters ----------------------------------------------
+    if cfg.IGNORE_QUALITY[quality] then
+        dbg(("Abort – quality %d ignored via IGNORE_QUALITY"):format(quality))
+        return false
+    end
+
+    if cfg.IGNORE_BOP and tpl and tpl.GetBonding and tpl:GetBonding() == 1 then
+        dbg("Abort – Bind-on-Pickup item, IGNORE_BOP=true")
+        return false
+    end
+
+    -- profession-bag slots (bags 1-4 only) --------------------------------
     if cfg.IGNORE_PROFESSION_BAG_SLOTS and bagSlot and bagSlot > 0 then
-        -- inventory slots 19-22 hold the bag containers
-        local bag = owner:GetItemByPos(255, bagSlot + 18)
-        if BagFamily(bag) ~= 0 then             -- uses helper above
-            return false                        -- ignore items in prof bags
+        local bag = owner:GetItemByPos(255, bagSlot + 18)        -- 19-22 container slots
+        if bag and BagFamily(bag) ~= 0 then                      -- non-generic bag family
+            dbg(("Abort – item in profession bag (slot %d)"):format(bagSlot))
+            return false
         end
     end
     
@@ -495,13 +563,29 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     end
     
     -- numeric thresholds (only if values known)
+
+    -- vendor price
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
+        dbg(("Abort – vendor value %d < %d"):format(sellPrice, cfg.IGNORE_VENDOR_VALUE_BELOW))
         return false
     end
-    if cfg.IGNORE_ITEMLEVEL_BELOW   > 0 and ilvl      < cfg.IGNORE_ITEMLEVEL_BELOW   then
+
+    -- item level
+    if cfg.IGNORE_ITEMLEVEL_BELOW > 0 and ilvl < cfg.IGNORE_ITEMLEVEL_BELOW then
+        dbg(("Abort – item level %d < %d"):format(ilvl, cfg.IGNORE_ITEMLEVEL_BELOW))
         return false
     end
-    if cfg.IGNORE_STACK_SIZE_ABOVE  > 0 and it:GetCount() > cfg.IGNORE_STACK_SIZE_ABOVE then
+
+    -- required level
+    if cfg.IGNORE_REQUIREDLEVEL_BELOW > 0 and reqLvl < cfg.IGNORE_REQUIREDLEVEL_BELOW then
+        dbg(("Abort – required level %d < %d"):format(reqLvl, cfg.IGNORE_REQUIREDLEVEL_BELOW))
+        return false
+    end
+
+    -- stack size
+    local stack = it:GetCount()
+    if cfg.IGNORE_STACK_SIZE_ABOVE > 0 and stack > cfg.IGNORE_STACK_SIZE_ABOVE then
+        dbg(("Abort – stack size %d > %d"):format(stack, cfg.IGNORE_STACK_SIZE_ABOVE))
         return false
     end
 
@@ -534,9 +618,9 @@ local function gatherItems(plr, cfg)
         end
     end
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- 1) EQUIPPED SLOTS 0-18
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     if cfg.INCLUDE_EQUIPPED then
         for slot = 0, 18 do
             -- skip any slot the user has marked to ignore
@@ -546,18 +630,18 @@ local function gatherItems(plr, cfg)
         end
     end
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- 2) BACKPACK (bag 0, inv slots 23-38)
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     if cfg.INCLUDE_BACKPACK then
         for slot = 23, 38 do
             add(plr:GetItemByPos(255, slot), "bp ", 0)         -- bagIndex 0
         end
     end
 
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     -- 3) ADDITIONAL BAGS (inventory slots 19-22 → bags 1-4)
-    --------------------------------------------------------------------
+    -- ------------------------------------------------------------------
     if cfg.INCLUDE_BAGS then
         for invSlot = 19, 22 do
             local bagItem = plr:GetItemByPos(255, invSlot)
@@ -582,7 +666,7 @@ local function shuffle(t)
         t[i], t[j] = t[j], t[i]
     end
 end
--------------------------------------------------------------- chest open
+-- ------------------------------------------------------------ chest open
 local function OnChestUse(event, go, player)
     local guid = go:GetGUIDLow()
     local gold = ChestGold[guid]
@@ -595,15 +679,15 @@ local function OnChestUse(event, go, player)
 end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
--------------------------------------------------------------- Multi-drop
+-- ------------------------------------------------------------ Multi-drop
 local function spawnChests(killer, victim, items, cfg)
     local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
     dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)")
     local totalChests = math.ceil(take / MAX_CHEST_ITEMS)
 
-    ----------------------------------------------------------------
+    -- --------------------------------------------------------------
     -- gold distribution
-    ----------------------------------------------------------------
+    -- --------------------------------------------------------------
     local victimGold = victim:GetCoinage()
     local pct = math.random(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX)
     local rawGive = math.floor(victimGold * pct / 100)
@@ -688,7 +772,7 @@ local function spawnChests(killer, victim, items, cfg)
     end
 end
 
----------------------------------------------------------------- MMR helper functions
+-- -------------------------------------------------------------- MMR helper functions
 local function MMR_Load(player)
     if player:GetData("MMR") then return end
     local guid = player:GetGUIDLow()
@@ -823,7 +907,7 @@ local function MMR_Update(killer, victim, cfg)
     dbg(string.format("MMR UPDATE: Victim "..victim:GetName()..", GUIDLow "..victim:GetGUIDLow()..", updated MMR from "..victimMMR.." to "..victim:GetData("MMR")))
 end
 
--------------------------------------------------------------- Load/save MMR to persistent storage
+-- ------------------------------------------------------------ Load/save MMR to persistent storage
 if CFG.MMR_ENABLED then
     CharDBExecute("CREATE DATABASE IF NOT EXISTS `"..CFG.MMR_DB.."`") -- Create custom db if it doesn't already exist
 
@@ -836,7 +920,7 @@ if CFG.MMR_ENABLED then
     RegisterPlayerEvent(28, function(_, player) MMR_Load(player)  end)  -- Load MMR on login/map change
 end
 
----------------------------------------------------------------- main callback
+-- -------------------------------------------------------------- main callback
 local function OnKillPlayer(event, killer, victim)
     -- grab the per-zone config
     local areaId = victim:GetAreaId()
@@ -845,13 +929,33 @@ local function OnKillPlayer(event, killer, victim)
     dbg(string.format("--- PvP kill detected in zone %d ---", zoneId))
 
     -- 0) master switch
-    if not cfg.ENABLE_MOD then return end
+    if not cfg.ENABLE_MOD then
+        dbg("Abort – mod disabled (ENABLE_MOD=false)")
+        return
+    end
 
-    -- 2) battleground toggle
+    -- 1) silly ones
+    if cfg.IGNORE_IF_KILLER_DRUNK and killer:GetDrunkValue() > 0 then
+    dbg("Abort – killer drunk stage " .. killer:GetDrunkValue())
+        return
+    end
+
+    if cfg.IGNORE_IF_VICTIM_DRUNK and victim:GetDrunkValue() > 0 then
+        dbg("Abort – victim drunk stage " .. victim:GetDrunkValue())
+        return
+    end
+
+    if cfg.IGNORE_AFK_VICTIM and victim:IsAFK() then
+        dbg("Abort – victim is AFK")
+        return
+    end
+
+    -- 2) battleground & arena toggle
     if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
         dbg("Battleground – abort")
         return
     end
+    if cfg.IGNORE_ARENA           and (killer:InArena() or victim:InArena()) then return end
 
     -- 4) level gates
     if victim:GetLevel() < cfg.MIN_LEVEL or victim:GetLevel() > cfg.MAX_LEVEL then
@@ -869,12 +973,32 @@ local function OnKillPlayer(event, killer, victim)
     -- 6) map / zone filters
     local mapId = victim:GetMapId()
     local areaId = victim:GetAreaId() 
-    if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId] then return end
-    if cfg.MAP_BLOCKLIST[mapId]                             then return end
-    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then return end
-    if cfg.ZONE_BLOCKLIST[zoneId]                           then return end
-    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then return end
-    if cfg.AREA_BLOCKLIST[areaId]                           then return end
+    if next(cfg.MAP_ALLOWLIST) and not cfg.MAP_ALLOWLIST[mapId] then
+        dbg("Abort – mapId " .. mapId .. " not in allow-list")
+        return
+    end
+    if cfg.MAP_BLOCKLIST[mapId] then
+        dbg("Abort – mapId " .. mapId .. " is block-listed")
+        return
+    end
+
+    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then
+        dbg("Abort – zoneId " .. zoneId .. " not in allow-list")
+        return
+    end
+    if cfg.ZONE_BLOCKLIST[zoneId] then
+        dbg("Abort – zoneId " .. zoneId .. " is block-listed")
+        return
+    end
+
+    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then
+        dbg("Abort – areaId " .. areaId .. " not in allow-list")
+        return
+    end
+    if cfg.AREA_BLOCKLIST[areaId] then
+        dbg("Abort – areaId " .. areaId .. " is block-listed")
+        return
+    end
 
     -- 7) spirit-healer proximity
     if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
@@ -890,6 +1014,21 @@ local function OnKillPlayer(event, killer, victim)
     if cfg.IGNORE_NEUTRAL_CITIES and NEUTRAL_CITY_AREAS[areaId] then
         dbg("Inside neutral city – abort")
         return
+    end
+
+    -- 9) Custom Aura Checks for both Victim/Killer
+    for spellId in pairs(cfg.IGNORE_AURA_ON_VICTIM) do
+        if victim:HasAura(spellId) then
+            dbg("Abort – victim has ignored aura " .. spellId)
+            return
+        end
+    end
+
+    for spellId in pairs(cfg.IGNORE_AURA_ON_KILLER) do
+        if killer:HasAura(spellId) then
+            dbg("Abort – killer has ignored aura " .. spellId)
+            return
+        end
     end
 
     dbg("Killer "..killer:GetName().." ("..killer:GetLevel()..") / Victim "
@@ -925,7 +1064,7 @@ RegisterPlayerEvent(6, OnKillPlayer)
 --========================================================================--
 --                            COMMANDS                                    --
 --========================================================================--
-if(CFG.ALLOW_PLAYER_COMMAND) then
+if(CFG.NOTIFY_PLAYER_OF_COMMAND) then
     -- ON_LOGIN 
     RegisterPlayerEvent(3, function(_, player)
         if not CFG.ENABLE_MOD then return end  
@@ -935,7 +1074,9 @@ if(CFG.ALLOW_PLAYER_COMMAND) then
             "Type |cff00ff00.ultpvp|r at any time to see the full-loot rules for the zone you’re in."
         )
     end)
+end
 
+if(CFG.ALLOW_PLAYER_COMMAND) then
     -- ON_COMMAND 
     RegisterPlayerEvent(42, function(_, player, command)
         if command ~= "ultpvp" then return end
