@@ -1,6 +1,24 @@
 --========================================================================================--
 --                                ULTIMATE FULL LOOT PVP                                  --
 --========================================================================================--
+
+-- ─────────────────────────────────────────────────────────────────────────────────────────
+-- GM-ONLY COMMANDS (always available to GMs regardless of ALLOW_PLAYER_COMMAND)
+--                                 GM must be ON
+-- .ultpvp reload
+--   • Reloads configuration at runtime.
+--   • Sends “Config reloaded.” on success or “Reload FAILED: <error>” on failure.
+--
+-- .ultpvp set <KEY> <VALUE>
+--   • Modifies only the base CFG values at runtime; zone and area specific overrides still take precedence.
+--   • Converts VALUE to boolean/number/string and validates KEY exists.
+--   • Changes are NOT written to disk. These will be lost on script reload or server restart.
+--   • Usage message if arguments are missing; error if key is unknown.
+--   • Sends “<KEY> → <VALUE>” on successful update.
+--
+-- Non-GM users invoking these subcommands receive “[Ultimate PvP] GM-only command.”
+-- ─────────────────────────────────────────────────────────────────────────────────────────
+
 -- ─────────────────────────────────────────────────────────────────────────────────────────
 --  PvP LOOT EVENTHOOK:
 --  Lets external scripts listen for PvP loot drops and react to them.
@@ -1158,95 +1176,145 @@ if(CFG.NOTIFY_PLAYER_OF_COMMAND) then
     end)
 end
 
-if(CFG.ALLOW_PLAYER_COMMAND) then
-    RegisterPlayerEvent(42, function(_, player, command)
-        local zoneId = player:GetZoneId()
-        local areaId = player:GetAreaId()
-        local cfg    = GetCFG(areaId, zoneId)
+------------------------------------------------------------------------
+--  GM-only maintenance + regular player info in one handler
+------------------------------------------------------------------------
 
-        if command == "ultpvp" then
-            local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
-                   (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
-            local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
-                   (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
-            local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
+-- helpers -------------------------------------------------------------
+local function boolify(s)
+    if s == "true" or s == "1" then return true
+    elseif s == "false" or s == "0" then return false end
+end
 
-            player:SendBroadcastMessage(
-                ("|cffffff00[Ultimate PvP]|r  Zone %d active: %s  |  Area %d active: %s"):format(
-                zoneId, yesNo(zoneActive), areaId, yesNo(areaActive)))
+local function reloadCfg(plr)                 -- plr may be nil!
+    if plr then
+        plr:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r Reloading Eluna scripts …")
+    else
+        SendWorldMessage("|cffffff00[Ultimate PvP]|r Reloading Eluna scripts …")
+    end
+    ReloadEluna()
+end
 
-            if areaActive then
-                player:SendBroadcastMessage(" • Your possessions |cffff0000ARE|r at risk!")
+-- main command hook ---------------------------------------------------
+RegisterPlayerEvent(42, function(_, player, msg)
+    if not msg:match("^ultpvp") then return end
 
-                local flags = {}
+    local args = {}
+    for w in msg:gmatch("%S+") do args[#args + 1] = w end
+    local sub = args[2]
 
-                if cfg.INCLUDE_EQUIPPED then table.insert(flags, "Equipped Items") end
-                if cfg.INCLUDE_BACKPACK then table.insert(flags, "Backpack") end
-                if cfg.INCLUDE_BAGS then table.insert(flags, "Bags 1-4") end
-                if cfg.INCLUDE_BANK_ITEMS then table.insert(flags, "Bank") end
-
-                if not cfg.IGNORE_CONSUMABLES then table.insert(flags, "Consumables") end
-                if not cfg.IGNORE_REAGENTS then table.insert(flags, "Reagents") end
-                if not cfg.IGNORE_KEYS then table.insert(flags, "Keys") end
-                if not cfg.IGNORE_CONJURED then table.insert(flags, "Conjured Items") end
-                if not cfg.IGNORE_HEIRLOOMS then table.insert(flags, "Heirlooms") end
-                if not cfg.IGNORE_SOULBOUND then table.insert(flags, "Soulbound Items") end
-                if not cfg.IGNORE_UNIQUE_EQUIPPED then table.insert(flags, "Unique-Equipped Items") end
-                if not cfg.IGNORE_ENCHANTED_EQUIPPED then table.insert(flags, "Enchanted Items") end
-                if not cfg.IGNORE_TRADABLE_ITEMS then table.insert(flags, "Tradable Items") end
-                if not cfg.IGNORE_NON_TRADABLE_ITEMS then table.insert(flags, "Non-Tradable Items") end
-
-                local qualityNames = {
-                    [0] = "Poor",
-                    [1] = "Common",
-                    [2] = "Uncommon",
-                    [3] = "Rare",
-                    [4] = "Epic",
-                    [5] = "Legendary",
-                    [6] = "Artifact",
-                    [7] = "Heirloom"
-                }
-                for quality = 0, 7 do
-                    if cfg.IGNORE_QUALITY[quality] == false then
-                        table.insert(flags, qualityNames[quality].." Items")
-                    end
-                end
-
-                if #flags > 0 then
-                    player:SendBroadcastMessage(" • |cffffff00Risk Factors Active:|r")
-                    for _, flag in ipairs(flags) do
-                        player:SendBroadcastMessage("   – "..flag..": |cff00ff00YES|r")
-                    end
-                end
-            else
-                player:SendBroadcastMessage(" • Your possessions |cff00ff00ARE NOT|r at risk.")
-            end
-
-
-        elseif command == "ultpvprisk" then
-            local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
-                   (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
-            local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
-                   (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
-
-            if not areaActive then
-                player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r No items at risk — Area is inactive.")
-                return false
-            end
-            local inv = gatherItems(player, cfg, true)
-            player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r PvP Loot Risk Preview")
-            if not inv or #inv == 0 then
-                player:SendBroadcastMessage(" • No items currently eligible for PvP drop.")
-            else
-                for _, data in ipairs(inv) do
-                    player:SendBroadcastMessage("   - " .. data.pretty)
-                end
-                player:SendBroadcastMessage((" • Eligible Items: |cffffff00%d|r"):format(#inv))
-            end
-        else
-            return 
+    --------------------------------------------------------------------
+    -- GM-ONLY BRANCH (always allowed for GMs)
+    --------------------------------------------------------------------
+    if sub == "reload" or sub == "set" then
+        if not player:IsGM() then
+            player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r GM-only command.")
+            return false
         end
 
-        return false 
-    end)
-end
+        if sub == "reload" then                               -- .ultpvp reload
+            local ok, err = pcall(reloadCfg)
+            player:SendBroadcastMessage(ok
+                and "|cffffff00[Ultimate PvP]|r Config reloaded."
+                or "|cffffff00[Ultimate PvP]|r Reload FAILED: "..err)
+            return false
+        end
+
+        if sub == "set" then                                  -- .ultpvp set K V
+            local key, raw = args[3], args[4]
+            if not key or not raw then
+                player:SendBroadcastMessage("|cffffff00Usage:|r .ultpvp set <KEY> <VALUE>")
+                return false
+            end
+            if CFG[key] == nil then
+                player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r Unknown key: "..key)
+                return false
+            end
+            local val = boolify(raw) or tonumber(raw) or raw
+            CFG[key] = val
+            player:SendBroadcastMessage(("|cffffff00[Ultimate PvP]|r %s → %s"):format(key, tostring(val)))
+            return false
+        end
+    end
+
+    --------------------------------------------------------------------
+    -- PLAYER-VISIBLE BRANCH (gated by CFG.ALLOW_PLAYER_COMMAND)
+    --------------------------------------------------------------------
+    if not CFG.ALLOW_PLAYER_COMMAND then return end
+
+    local zoneId = player:GetZoneId()
+    local areaId = player:GetAreaId()
+    local cfg    = GetCFG(areaId, zoneId)
+
+    local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
+    local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
+                       (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
+    local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
+                       (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
+ 
+    -- ".ultpvp"
+    if sub == nil then
+        player:SendBroadcastMessage(
+            ("|cffffff00[Ultimate PvP]|r  Zone %d active: %s  |  Area %d active: %s"):format(
+            zoneId, yesNo(zoneActive), areaId, yesNo(areaActive)))
+
+        if areaActive then
+            player:SendBroadcastMessage(" • Your possessions |cffff0000ARE|r at risk!")
+
+            local flags = {}
+
+            if cfg.INCLUDE_EQUIPPED           then table.insert(flags, "Equipped Items")      end
+            if cfg.INCLUDE_BACKPACK           then table.insert(flags, "Backpack")            end
+            if cfg.INCLUDE_BAGS               then table.insert(flags, "Bags 1-4")            end
+            if cfg.INCLUDE_BANK_ITEMS         then table.insert(flags, "Bank")                end
+
+            if not cfg.IGNORE_CONSUMABLES     then table.insert(flags, "Consumables")         end
+            if not cfg.IGNORE_REAGENTS        then table.insert(flags, "Reagents")            end
+            if not cfg.IGNORE_KEYS            then table.insert(flags, "Keys")                end
+            if not cfg.IGNORE_CONJURED        then table.insert(flags, "Conjured Items")      end
+            if not cfg.IGNORE_HEIRLOOMS       then table.insert(flags, "Heirlooms")           end
+            if not cfg.IGNORE_SOULBOUND       then table.insert(flags, "Soulbound Items")     end
+            if not cfg.IGNORE_UNIQUE_EQUIPPED then table.insert(flags, "Unique-Equipped")     end
+            if not cfg.IGNORE_ENCHANTED_EQUIPPED then table.insert(flags, "Enchanted Items")  end
+            if not cfg.IGNORE_TRADABLE_ITEMS  then table.insert(flags, "Tradable Items")      end
+            if not cfg.IGNORE_NON_TRADABLE_ITEMS then table.insert(flags, "Non-Tradable")     end
+
+            local qualityNames = { [0]="Poor",[1]="Common",[2]="Uncommon",[3]="Rare",
+                                    [4]="Epic",[5]="Legendary",[6]="Artifact",[7]="Heirloom" }
+            for q = 0,7 do
+                if cfg.IGNORE_QUALITY[q] == false then
+                    table.insert(flags, qualityNames[q].." Items")
+                end
+            end
+
+            if #flags > 0 then
+                player:SendBroadcastMessage(" • |cffffff00Risk Factors Active:|r")
+                for _, f in ipairs(flags) do
+                    player:SendBroadcastMessage("   – "..f..": |cff00ff00YES|r")
+                end
+            end
+        else
+            player:SendBroadcastMessage(" • Your possessions |cff00ff00ARE NOT|r at risk.")
+        end
+        return false
+    end
+
+    -- ".ultpvp risk"  (or legacy ".ultpvprisk")
+    if sub == "risk" or msg == "ultpvprisk" then
+        if not areaActive then
+            player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r No items at risk — Area inactive.")
+            return false
+        end
+        local inv = gatherItems(player, cfg, true)
+        player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r PvP Loot Risk Preview")
+        if not inv or #inv == 0 then
+            player:SendBroadcastMessage(" • No items currently eligible for PvP drop.")
+        else
+            for _, data in ipairs(inv) do
+                player:SendBroadcastMessage("   - "..data.pretty)
+            end
+            player:SendBroadcastMessage((" • Eligible Items: |cffffff00%d|r"):format(#inv))
+        end
+        return false
+    end
+end)
