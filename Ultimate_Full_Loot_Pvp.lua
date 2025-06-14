@@ -1,16 +1,49 @@
---========================================================================--
---                      ULTIMATE FULL LOOT PVP                            --
---========================================================================--
-
--- ───────────────────────────────────────────────────────────────────────────
---  OVERRIDE HIERARCHY
---  1. CFG  – global defaults
---  2. ZONE_OVERRIDES   – per-zone tweaks; only keys listed are replaced
---  3. AREA_OVERRIDES   – per-area tweaks; sit *inside* their zone and trump both
+--========================================================================================--
+--                                ULTIMATE FULL LOOT PVP                                  --
+--========================================================================================--
+-- ─────────────────────────────────────────────────────────────────────────────────────────
+--  PvP LOOT EVENTHOOK:
+--  Lets external scripts listen for PvP loot drops and react to them.
+--  
+--  To use: another Lua script can register a callback with:
 --
---  Anything omitted at a lower level automatically falls back to the level
---  above it (Area → Zone → CFG).
--- ───────────────────────────────────────────────────────────────────────────
+--    RegisterPvPLootHook(function(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
+--        -- respond to the event, e.g. logging, alerting, custom behavior
+--    end)
+--
+--  ARGUMENTS PASSED TO EACH HOOK:
+--      killer     – Eluna player object who got the kill
+--      victim     – Eluna player object who died
+--      items      – Table of item data selected for drop (via gatherItems)
+--      gold       – Amount of copper taken from victim (after cap applied)
+--      cfg        – Final, merged config that governed this kill (all overrides/profiles applied)
+--      mapId      – Map where the kill occurred
+--      zoneId     – Zone where the kill occurred
+--      areaId     – Area where the kill occurred
+--
+--  EXAMPLE:
+--      RegisterPvPLootHook(function(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
+--          SendWorldMessage(("%s looted %s and %d item(s) from %s in zone %d")
+--              :format(killer:GetName(), fmtCoins(gold), #items, victim:GetName(), zoneId))
+--      end)
+
+--         PRINT RESULT: Thrall looted 12g 45s 89c and 3 item(s) from Jaina in zone 495
+--
+--  This system is optional and does not interfere with normal loot operation.
+--  Hooks are pcall-wrapped and fail-safe.
+-- ──────────────────────────────────────────────────────────────────────────────────────────
+
+-- ──────────────────────────────────────────────────────────────────────────────────────────
+--  OVERRIDE HIERARCHY
+--  1. CFG             – global defaults
+--  2. ZONE_OVERRIDES  – per-zone tweaks; only listed keys are replaced
+--  3. AREA_OVERRIDES  – per-area tweaks; sit *inside* their zone and trump both above
+--  4. PROFILE         – optional named preset applied last; overrides all previous layers
+--
+--  Any key omitted at a given level automatically inherits from the layer above
+--  (Area → Zone → CFG). If a PROFILE is defined (from any layer), it is applied last
+--  and overwrites all other values.
+-- ──────────────────────────────────────────────────────────────────────────────────────────
 
 local CFG = {
     -- ------------------------------------------------------------------
@@ -30,7 +63,7 @@ local CFG = {
     ZONE_ALLOWLIST             = {},             -- e.g. { [0]=false,},
     ZONE_BLOCKLIST             = {[4197]=true},  --[4197]Wintergrasp    
     AREA_ALLOWLIST             = {},             -- e.g. { [1]=false,},
-    AREA_BLOCKLIST             = {},             -- e.g. { [0]=true,},
+    AREA_BLOCKLIST             = {[350]=true},             -- e.g. { [0]=true,},
 
     -- ------------------------------------------------------------------
     -- Level restrictions
@@ -120,7 +153,7 @@ local CFG = {
     CUSTOM_IGNORE_CLASSES      = {},       -- e.g. { ["0"]=true,},
    
     -- ------------------------------------------------------------------
-    -- Chest arameters
+    -- Chest parameters
     -- ------------------------------------------------------------------
     CHEST_ENTRY               = 2069420,   -- chest template
     DESPAWN_SEC               = 60,        -- chest lifetime (seconds)
@@ -143,6 +176,23 @@ local CFG = {
     IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
     IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
     SPIRIT_HEALER_RANGE       = 20,       -- metres
+
+    -- ------------------------------------------------------------------
+    -- Loot Profiles: Preset or Share your favorite exclusion combinations!
+    --   Example for zone/area override [47] = {PROFILE = "hardcore"},
+    -- ------------------------------------------------------------------
+    LOOT_PROFILES = {
+        ["hardcore"] = {
+            INCLUDE_EQUIPPED = true,
+            IGNORE_QUALITY = {[0]=false,[1]=false,[2]=false,[3]=false,[4]=false},
+        },
+        ["softcore"] = {
+            INCLUDE_EQUIPPED = false,
+            IGNORE_QUALITY = {[0]=true,[1]=true,[2]=true,[3]=true,[4]=false},
+        -- add more as you need…
+        },
+    },
+
     -- ------------------------------------------------------------------
     -- MMR
     -- ------------------------------------------------------------------
@@ -256,7 +306,11 @@ local NEUTRAL_CITY_AREAS = {
 --========================================================================--
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
-local DefaultCFG = CFG  
+local DefaultCFG = CFG
+local PvPLootHooks = {}
+function RegisterPvPLootHook(fn)
+    table.insert(PvPLootHooks, fn)
+end  
 -- Ensure chest exists before proceeding
 if CFG.ENABLE_MOD then
     local ChestExists = WorldDBQuery("SELECT `name` FROM `gameobject_template` WHERE `entry` = "..CFG.CHEST_ENTRY)
@@ -287,6 +341,18 @@ local function GetCFG(areaId, zoneId)
     -- apply area-level tweaks (if any) – wins over everything
     local a = AreaOverrides[areaId]
     if a then for k, v in pairs(a) do cfg[k] = v end end
+    -- check for preset profiles
+    if cfg.PROFILE then
+        local preset = LOOT_PROFILES[cfg.PROFILE]
+        if preset then
+            for k, v in pairs(preset) do
+                cfg[k] = v
+            end
+            dbg("Applied profile: " .. cfg.PROFILE)
+        else
+            dbg("Profile not found: " .. cfg.PROFILE)
+        end
+    end
     return cfg
 end
 local LootStore = {} 
@@ -925,6 +991,7 @@ end
 -- -------------------------------------------------------------- main callback
 local function OnKillPlayer(event, killer, victim)
     -- grab the per-zone config
+    local mapId = victim:GetMapId()
     local areaId = victim:GetAreaId()
     local zoneId = victim:GetZoneId()
     local cfg    = GetCFG(areaId, zoneId)
@@ -951,7 +1018,7 @@ local function OnKillPlayer(event, killer, victim)
         dbg("Abort – victim is AFK")
         return
     end
-    
+
     if cfg.IGNORE_VICTIM_ALLIANCE and victim:IsAlliance() then
         dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true")
         return
@@ -981,9 +1048,7 @@ local function OnKillPlayer(event, killer, victim)
         return
     end
 
-    -- 6) map / zone filters
-    local mapId = victim:GetMapId()
-    local areaId = victim:GetAreaId() 
+    -- 6) map / zone filters 
     if next(cfg.MAP_ALLOWLIST) and not cfg.MAP_ALLOWLIST[mapId] then
         dbg("Abort – mapId " .. mapId .. " not in allow-list")
         return
@@ -1063,6 +1128,11 @@ local function OnKillPlayer(event, killer, victim)
 
     shuffle(items)
     spawnChests(killer, victim, items, cfg)
+
+    --Hook for cross script/web compatability
+    for _, fn in ipairs(PvPLootHooks) do
+        pcall(fn, killer, victim, items, rawGive, cfg, mapId, zoneId, areaId)
+    end
     dbg("--- done ---")
 end
 
@@ -1080,47 +1150,102 @@ if(CFG.NOTIFY_PLAYER_OF_COMMAND) then
     RegisterPlayerEvent(3, function(_, player)
         if not CFG.ENABLE_MOD then return end  
 
-        player:SendBroadcastMessage(
-            "|cffff0000Ultimate PvP|r is active on this realm.  " ..
-            "Type |cff00ff00.ultpvp|r at any time to see the full-loot rules for the zone you’re in."
-        )
+        player:SendBroadcastMessage("|cffff0000Ultimate PvP|r is active on this realm.")
+        player:SendBroadcastMessage("Type |cff00ff00.ultpvp|r at any time to see the full-loot rules for the zone you’re in.")
+        player:SendBroadcastMessage("Type |cff00ff00.ultpvprisk|r to show exactly what you risk, if applicable.")
+
     end)
 end
 
 if(CFG.ALLOW_PLAYER_COMMAND) then
-    -- ON_COMMAND 
     RegisterPlayerEvent(42, function(_, player, command)
-        if command ~= "ultpvp" then return end
-
         local zoneId = player:GetZoneId()
-        local areaId = player:GetAreaId()  
+        local areaId = player:GetAreaId()
         local cfg    = GetCFG(areaId, zoneId)
 
-        local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
-               (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
-        local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
-               (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
+        if command == "ultpvp" then
+            local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
+                   (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
+            local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
+                   (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
+            local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
 
-        local function yesNo(v) return v and "|cff00ff00Yes|r" or "|cffff0000No|r" end
-        local enabled = ModIsActiveHere(player, cfg)
-        player:SendBroadcastMessage(
-            ("|cffffff00[Ultimate PvP]|r  Zone %d active: %s  |  Area %d active: %s"):format(
-            zoneId, yesNo(zoneActive), areaId, yesNo(areaActive)))
-         -- danger / safety notice
-        if areaActive then
-            player:SendBroadcastMessage(" • Your possessions |cffff0000ARE|r at risk!")
+            player:SendBroadcastMessage(
+                ("|cffffff00[Ultimate PvP]|r  Zone %d active: %s  |  Area %d active: %s"):format(
+                zoneId, yesNo(zoneActive), areaId, yesNo(areaActive)))
+
+            if areaActive then
+                player:SendBroadcastMessage(" • Your possessions |cffff0000ARE|r at risk!")
+
+                local flags = {}
+
+                if cfg.INCLUDE_EQUIPPED then table.insert(flags, "Equipped Items") end
+                if cfg.INCLUDE_BACKPACK then table.insert(flags, "Backpack") end
+                if cfg.INCLUDE_BAGS then table.insert(flags, "Bags 1-4") end
+                if cfg.INCLUDE_BANK_ITEMS then table.insert(flags, "Bank") end
+
+                if not cfg.IGNORE_CONSUMABLES then table.insert(flags, "Consumables") end
+                if not cfg.IGNORE_REAGENTS then table.insert(flags, "Reagents") end
+                if not cfg.IGNORE_KEYS then table.insert(flags, "Keys") end
+                if not cfg.IGNORE_CONJURED then table.insert(flags, "Conjured Items") end
+                if not cfg.IGNORE_HEIRLOOMS then table.insert(flags, "Heirlooms") end
+                if not cfg.IGNORE_SOULBOUND then table.insert(flags, "Soulbound Items") end
+                if not cfg.IGNORE_UNIQUE_EQUIPPED then table.insert(flags, "Unique-Equipped Items") end
+                if not cfg.IGNORE_ENCHANTED_EQUIPPED then table.insert(flags, "Enchanted Items") end
+                if not cfg.IGNORE_TRADABLE_ITEMS then table.insert(flags, "Tradable Items") end
+                if not cfg.IGNORE_NON_TRADABLE_ITEMS then table.insert(flags, "Non-Tradable Items") end
+
+                local qualityNames = {
+                    [0] = "Poor",
+                    [1] = "Common",
+                    [2] = "Uncommon",
+                    [3] = "Rare",
+                    [4] = "Epic",
+                    [5] = "Legendary",
+                    [6] = "Artifact",
+                    [7] = "Heirloom"
+                }
+                for quality = 0, 7 do
+                    if cfg.IGNORE_QUALITY[quality] == false then
+                        table.insert(flags, qualityNames[quality].." Items")
+                    end
+                end
+
+                if #flags > 0 then
+                    player:SendBroadcastMessage(" • |cffffff00Risk Factors Active:|r")
+                    for _, flag in ipairs(flags) do
+                        player:SendBroadcastMessage("   – "..flag..": |cff00ff00YES|r")
+                    end
+                end
+            else
+                player:SendBroadcastMessage(" • Your possessions |cff00ff00ARE NOT|r at risk.")
+            end
+
+
+        elseif command == "ultpvprisk" then
+            local zoneActive = not cfg.ZONE_BLOCKLIST[zoneId] and
+                   (next(cfg.ZONE_ALLOWLIST) == nil or cfg.ZONE_ALLOWLIST[zoneId])
+            local areaActive = not cfg.AREA_BLOCKLIST[areaId] and
+                   (next(cfg.AREA_ALLOWLIST) == nil or cfg.AREA_ALLOWLIST[areaId])
+
+            if not areaActive then
+                player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r No items at risk — Area is inactive.")
+                return false
+            end
+            local inv = gatherItems(player, cfg, true)
+            player:SendBroadcastMessage("|cffffff00[Ultimate PvP]|r PvP Loot Risk Preview")
+            if not inv or #inv == 0 then
+                player:SendBroadcastMessage(" • No items currently eligible for PvP drop.")
+            else
+                for _, data in ipairs(inv) do
+                    player:SendBroadcastMessage("   - " .. data.pretty)
+                end
+                player:SendBroadcastMessage((" • Eligible Items: |cffffff00%d|r"):format(#inv))
+            end
         else
-            player:SendBroadcastMessage(" • Your possessions |cff00ff00ARE NOT|r at risk.")
+            return 
         end
-       player:SendBroadcastMessage(
-        (" • Gold Drop: |cffffff00%d-%d%%|r (cap %s)  |  Inventory Drop: |cffffff00%d%%|r")
-        :format(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX,
-                fmtCoins(cfg.GOLD_CAP_PER_KILL), cfg.ITEM_DROP_PERCENT))
-        player:SendBroadcastMessage((" • Include Equipped: %s  Bags: %s  Bank: %s"):format(
-            yesNo(cfg.INCLUDE_EQUIPPED), yesNo(cfg.INCLUDE_BAGS), yesNo(cfg.INCLUDE_BANK_ITEMS)))
-        player:SendBroadcastMessage((" • Ignore quality - Rare: %s  Epic: %s  Legendary: %s"):format(
-            yesNo(cfg.IGNORE_QUALITY[3]), yesNo(cfg.IGNORE_QUALITY[4]), yesNo(cfg.IGNORE_QUALITY[5])))
-        -- return false so the core doesn’t echo “Unknown command: ultpvp”
-        return false
+
+        return false 
     end)
 end
