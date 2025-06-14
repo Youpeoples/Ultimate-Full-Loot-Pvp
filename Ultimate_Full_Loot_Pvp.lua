@@ -137,6 +137,8 @@ local CFG = {
     IGNORE_CAPITALS           = true,     -- skip kills in faction capitals
     IGNORE_IF_KILLER_DRUNK    = false,    -- why not?
     IGNORE_IF_VICTIM_DRUNK    = false,    -- its only fair.
+    IGNORE_VICTIM_ALLIANCE    = false,    -- skip if victim alliance
+    IGNORE_VICTIM_HORDE       = false,    -- skip if victim horde
     IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
     IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
     IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
@@ -949,7 +951,16 @@ local function OnKillPlayer(event, killer, victim)
         dbg("Abort – victim is AFK")
         return
     end
+    
+    if cfg.IGNORE_VICTIM_ALLIANCE and victim:IsAlliance() then
+        dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true")
+        return
+    end
 
+    if cfg.IGNORE_VICTIM_HORDE and victim:IsHorde() then
+        dbg("Abort – victim is Horde, IGNORE_VICTIM_HORDE=true")
+        return
+    end
     -- 2) battleground & arena toggle
     if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
         dbg("Battleground – abort")
