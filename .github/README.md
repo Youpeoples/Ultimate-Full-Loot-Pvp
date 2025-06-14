@@ -41,59 +41,85 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | Option | Purpose |
 |--------|---------|
 | `ENABLE_MOD` | Master on/off switch |
-| `NOTIFY_PLAYER_OF_COMMAND ` | Login message on/off |
+|  |  |
+|  |  |
 | `ALLOW_PLAYER_COMMAND ` | Player access to info regarding standing location |
+| `NOTIFY_PLAYER_OF_COMMAND ` | Login message on/off |
+|  |  |
+|  |  |
+| `AREA_ALLOWLIST / AREA_BLOCKLIST` | Restrict to area |
 | `MAP_ALLOWLIST / MAP_BLOCKLIST` | Restrict to specific maps (use IDs) |
 | `ZONE_ALLOWLIST / ZONE_BLOCKLIST` | Restrict to zones |
-| `AREA_ALLOWLIST / AREA_BLOCKLIST` | Restrict to area |
+|  |  |
+|  |  |
 | `MIN_LEVEL / MAX_LEVEL` | Victim level range |
 | `MIN_LEVEL_DIFF / MAX_LEVEL_DIFF` | Allowed level difference killer↔victim |
-| `INCLUDE_EQUIPPED` | 	Include equipped slots 0-18 |
+|  |  |
+|  |  |
 | `IGNORE_EQUIPPED_SLOTS[0]-[18]` | Skip any particular item slot  |
 | `INCLUDE_BACKPACK` | Include backpack (bag 0) contents |
 | `INCLUDE_BAGS` | Include bags 1-4 contents |
 | `INCLUDE_BANK_ITEMS` | Include bank items(NYI) |
-| `IGNORE_QUEST_ITEMS` | Skip quest-flagged items |
-| `IGNORE_CONSUMABLES` | Skip consumables |
-| `IGNORE_REAGENTS` | Skip reagents & trade goods |
-| `IGNORE_KEYS` | Skip key items |
-| `IGNORE_PROFESSION_BAG_SLOTS` | Skip items inside profession-specific bags |
-| `IGNORE_HEIRLOOMS` | Skip heirloom items |
-| `IGNORE_UNIQUE_EQUIPPED` | Skip unique-equipped items  |
-| `IGNORE_SOULBOUND` | Skip soul-bound items |
+| `INCLUDE_EQUIPPED` | 	Include equipped slots 0-18 |
+|  |  |
+|  |  |
+| `ITEM_DROP_PERCENT` | % of eligible items to drop |
+| `IGNORE_BOP` | Skip Bind-on-Pickup items |
 | `IGNORE_CONJURED` | Skip conjured items |
-| `SPLIT_GOLD_BETWEEN_CHESTS` | Evenly divide stolen gold across chests |
-| `IGNORE_VENDOR_VALUE_BELOW` | Skip items under this vendor value |
-| `IGNORE_ITEMLEVEL_BELOW` | 	Skip items below this item level |
-| `IGNORE_STACK_SIZE_ABOVE` | Skip stacks larger than this size |
-| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore |
-| `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
+| `IGNORE_CONSUMABLES` | Skip consumables |
 | `IGNORE_ENCHANTED_EQUIPPED` | Skip enchanted equipped items |
+| `IGNORE_HEIRLOOMS` | Skip heirloom items |
+| `IGNORE_ITEMLEVEL_BELOW` | 	Skip items below this item level |
+| `IGNORE_KEYS` | Skip key items |
 | `IGNORE_NON_TRADABLE_ITEMS` | Skip non-tradable items |
-| `IGNORE_TRADABLE_ITEMS` |  Skip tradable items |
+| `IGNORE_QUALITY` | Per-rarity toggle table |
+| `IGNORE_QUEST_ITEMS` | Skip quest-flagged items |
+| `IGNORE_REAGENTS` | Skip reagents & trade goods |
 | `IGNORE_REQUIREDLEVEL_BELOW` | Skip items below this required level |
+| `IGNORE_SOULBOUND` | Skip soul-bound items |
+| `IGNORE_STACK_SIZE_ABOVE` | Skip stacks larger than this size |
+| `IGNORE_TRADABLE_ITEMS` |  Skip tradable items |
+| `IGNORE_UNIQUE_EQUIPPED` | Skip unique-equipped items  |
+| `IGNORE_VENDOR_VALUE_BELOW` | Skip items under this vendor value |
+|  |  |
+|  |  |
+| `GOLD_CAP_PER_KILL` | Hard copper cap (0 = no cap) |
+| `GOLD_PERCENT_MIN / MAX` | Random % window of gold to steal |
+| `SPLIT_GOLD_BETWEEN_CHESTS` | Evenly divide stolen gold across chests |
+|  |  |
+|  |  |
+| `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
+| `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
+| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore |
+|  |  |
+|  |  |
 | `IGNORE_AFK_VICTIM` | Skip AFK victims |
+| `IGNORE_ARENA` | 	Disable in Arena |
 | `IGNORE_AURA_ON_KILLER` | Skip if killer has listed aura  |
 | `IGNORE_AURA_ON_VICTIM` | Skip if victim has listed aura |
+| `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
+| `IGNORE_CAPITALS` | Skip Faction Capitals |
 | `IGNORE_IF_KILLER_DRUNK` | Skip if killer is drunk |
 | `IGNORE_IF_VICTIM_DRUNK` | Skip if victim is drunk |
-| `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
-| `ITEM_DROP_PERCENT` | % of eligible items to drop |
-| `IGNORE_CAPITALS` | Skip Faction Capitals |
 | `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
-| `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
-| `IGNORE_ARENA` | 	Disable in Arena |
+| `IGNORE_PROFESSION_BAG_SLOTS` | Skip items inside profession-specific bags |
+| `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |
+|  |  |
+|  |  |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
 | `SPIRIT_HEALER_RANGE` | 	Range for spirit-healer check (m) |
-| `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |
-| `IGNORE_QUALITY` | Per-rarity toggle table |
-| `IGNORE_BOP` | Skip Bind-on-Pickup items |
-| `ITEM_DROP_PERCENT` | % of victim items to pick before packaging |
-| `GOLD_PERCENT_MIN / MAX` | Random % window of gold to steal |
-| `GOLD_CAP_PER_KILL` | Hard copper cap (0 = no cap) |
+|  |  |
+|  |  |
+| `IGNORE_VICTIM_ALLIANCE` | Skip if victim horde |
+| `IGNORE_VICTIM_HORDE` | Skip if victim alliance |
+|  |  |
+|  |  |
 | `CHEST_ENTRY` | GameObject entry of your chest display ID |
 | `DESPAWN_SEC` | Chest lifetime in seconds |
+|  |  |
+|  |  |
 | `DEBUG` | `true` for chatty console logs |
+
 
 
 ---
