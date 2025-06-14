@@ -221,7 +221,8 @@ local CFG = {
 }
 -- ------------------------------------------------------------------
 -- Loot Profiles: Preset or Share your favorite exclusion combinations!
---   Example for zone/area override [47] = {PROFILE = "hardcore"},
+-- Profiles wont trigger without first being applied in an Override.
+-- Example for zone/area override:    [47] = {PROFILE = "hardcore"},
 -- ------------------------------------------------------------------
 local LOOT_PROFILES = {
     ["hardcore"] = {
