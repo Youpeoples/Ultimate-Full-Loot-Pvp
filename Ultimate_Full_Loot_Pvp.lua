@@ -178,22 +178,6 @@ local CFG = {
     SPIRIT_HEALER_RANGE       = 20,       -- metres
 
     -- ------------------------------------------------------------------
-    -- Loot Profiles: Preset or Share your favorite exclusion combinations!
-    --   Example for zone/area override [47] = {PROFILE = "hardcore"},
-    -- ------------------------------------------------------------------
-    LOOT_PROFILES = {
-        ["hardcore"] = {
-            INCLUDE_EQUIPPED = true,
-            IGNORE_QUALITY = {[0]=false,[1]=false,[2]=false,[3]=false,[4]=false},
-        },
-        ["softcore"] = {
-            INCLUDE_EQUIPPED = false,
-            IGNORE_QUALITY = {[0]=true,[1]=true,[2]=true,[3]=true,[4]=false},
-        -- add more as you need…
-        },
-    },
-
-    -- ------------------------------------------------------------------
     -- MMR
     -- ------------------------------------------------------------------
     -- General MMR settings
@@ -235,6 +219,22 @@ local CFG = {
     -- ------------------------------------------------------------------
     DEBUG                     = false,
 }
+-- ------------------------------------------------------------------
+-- Loot Profiles: Preset or Share your favorite exclusion combinations!
+--   Example for zone/area override [47] = {PROFILE = "hardcore"},
+-- ------------------------------------------------------------------
+local LOOT_PROFILES = {
+    ["hardcore"] = {
+        INCLUDE_EQUIPPED = true,
+        IGNORE_QUALITY = {[0]=false,[1]=false,[2]=false,[3]=false,[4]=false},
+    },
+    ["softcore"] = {
+        INCLUDE_EQUIPPED = false,
+        IGNORE_QUALITY = {[0]=true,[1]=true,[2]=true,[3]=true,[4]=false},
+    -- add more as you need…
+    },
+}
+
 
 --========================================================================--
 --                    Individual Zone Overrides Section                   --
