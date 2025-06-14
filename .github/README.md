@@ -79,6 +79,8 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_IF_VICTIM_DRUNK` | Skip if victim is drunk |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
 | `ITEM_DROP_PERCENT` | % of eligible items to drop |
+| `IGNORE_VICTIM_HORDE` | Skip if victim alliance |
+| `IGNORE_VICTIM_ALLIANCE` | Skip if victim horde |
 | `IGNORE_CAPITALS` | Skip Faction Capitals |
 | `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
 | `IGNORE_BATTLEGROUND` | 	Disable in Battlegrounds |
