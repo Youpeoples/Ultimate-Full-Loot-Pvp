@@ -21,6 +21,10 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
 * **Equipped & bag scanning** – includes equipped slots, backpack, and extra bags; bank support planned.
   
 * **Simple and Extensive configurability** – all behaviour lives in one `CFG` table at the top of the script.
+
+* **Loot Profile Presets** – Named, easily sharable and reusable configs that override all settings.
+
+* **PvP Loot Hooks** – External scripts can register to react to loot events.
   
 * **Full DEBUG mode** – verbose console output for every step.
 
