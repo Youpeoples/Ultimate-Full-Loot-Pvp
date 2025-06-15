@@ -7,6 +7,8 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
 
 ## Key Features
 * **Multi-chest logic** – up to 16 items per chest, unlimited overflow.
+
+* **Discord/Webhook Integration** – send  notifications to Discord (or any webhook) with embeds showing items looted, gold amounts, and kill location, complete with threshold controls for volume.
   
 * **Gold cuts & caps** – percent roll, optional hard cap, and even splitting across chests.
   
@@ -24,7 +26,7 @@ Transform every open-world PvP kill into a dynamic ‘spoils of war’ encounter
 
 * **Loot Profile Presets** – Named, easily sharable and reusable configs that override all settings.
 
-* **PvP Loot Hooks** – External scripts can register to react to loot events.
+* **Script Hook** – External scripts can register to react to loot events.
   
 * **GM Commands** - instantly apply test configuration changes in-game without restarting the server or reloading scripts.
   
