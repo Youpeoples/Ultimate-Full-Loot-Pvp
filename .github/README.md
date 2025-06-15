@@ -97,7 +97,13 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 |  |  |
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
-| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore |
+| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore ||  |  |
+|  |  |
+|  |  |
+| `ENABLE_KILL_FARM_PROTECTION` | Toggle on/off protection |
+| `KILL_FARM_WINDOW_SEC` | Checked time window |
+| `KILL_FARM_MAX_KILLS` | Kills allowed in that windows |
+| `KILL_FARM_PUNISH_MSG` | Msg to send upon limit met |
 |  |  |
 |  |  |
 | `IGNORE_AFK_VICTIM` | Skip AFK victims |
