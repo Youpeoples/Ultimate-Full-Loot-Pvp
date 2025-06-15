@@ -207,6 +207,7 @@ local CFG = {
     IGNORE_VICTIM_HORDE       = false,    -- skip if victim horde
     IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
     IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
+    IGNORE_SUICIDE            = false,    -- skip if victim is also killer
     IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
     SPIRIT_HEALER_RANGE       = 20,       -- metres
 
@@ -496,7 +497,7 @@ local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, area
 
             -- then curl it
             local cmd = string.format(
-              'cmd /C curl -v -H "Content-Type: application/json" -X POST -d "@%s" "%s"',
+              'cmd /C curl -H "Content-Type: application/json" -X POST -d "@%s" "%s"',
               filePath, url
             )
             print("[Ultimate PvP] RAW CMD →", cmd)
@@ -1145,6 +1146,14 @@ local function OnKillPlayer(event, killer, victim)
     local areaId = victim:GetAreaId()
     local zoneId = victim:GetZoneId()
     local cfg    = GetCFG(areaId, zoneId)
+
+    --suicide check
+    if IGNORE_SUICIDE then
+        if killer:GetGUIDLow() == victim:GetGUIDLow() then
+            dbg("Abort – self-kill detected")
+            return
+        end
+    end
     dbg(string.format("--- PvP kill detected in zone %d ---", zoneId))
 
     -- 0) master switch
