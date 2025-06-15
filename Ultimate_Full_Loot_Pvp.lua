@@ -186,13 +186,23 @@ local CFG = {
 
     -- ------------------------------------------------------------------
     -- Explicit allow / deny
+    --
+    -- Player Classes: 1 warrior, 2 paladin, 3 hunter, 4 rogue, 5 priest,  
+    --      6 Deathknight, 7 Shaman, 8 Mage, 9 Warlock, 10 Druid
+    --
+    -- Races: 1 Human, 2 Orc, 3 Dwarf, 4 Nightelf, 5 Undead, 6 Tauren,
+    --      7 Gnome, 8 Troll, 10 Blood Elf, 11 Draenei
     -- ------------------------------------------------------------------
     CUSTOM_ALLOW_IDS           = {},       -- overrides all ignore checks
     CUSTOM_IGNORE_IDS          = {[6948]=true,   --Hearthstone
                                   [5976]=true,   --Guild Tabard 
                                  },
-    CUSTOM_IGNORE_CLASSES      = {},       -- e.g. { ["0"]=true,},
-   
+    CUSTOM_IGNORE_CLASSES      = {},       --ITEM CLASS e.g. { ["0"]=true,},
+
+    IGNORE_VICTIM_PLAYER_CLASS = {},       -- e.g. {[1] = true,}, warrior
+    IGNORE_VICTIM_PLAYER_RACES = {},
+    IGNORE_KILLER_PLAYER_CLASS = {},       
+    IGNORE_KILLER_PLAYER_RACES = {},         
     -- ------------------------------------------------------------------
     -- Chest parameters
     -- ------------------------------------------------------------------
@@ -267,7 +277,14 @@ local CFG = {
     -- ------------------------------------------------------------------
     -- Debug
     -- ------------------------------------------------------------------
-    DEBUG                     = false,
+    DEBUG                     = false,       
+    DEBUG_LEVELS = {    
+        chests                = false,
+        items                 = false,
+        kill                  = false,
+        mmr                   = false,
+        webhook               = false,
+    },
 }
 -- ------------------------------------------------------------------
 -- Loot Profiles: Preset or Share your favorite exclusion combinations!
@@ -358,11 +375,23 @@ local NEUTRAL_CITY_AREAS = {
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
 local DefaultCFG = CFG
+
 local PvPLootHooks = {}
 function RegisterPvPLootHook(fn)
     table.insert(PvPLootHooks, fn)
-end  
--- Ensure chest exists before proceeding
+end 
+
+-- ----------------------------------------------------------------debug handler
+local function dbg(msg, category)
+    if not CFG.DEBUG then return end
+    if category and CFG.DEBUG_LEVELS[category] then
+        print("[PvPChest]["..category.."] " .. msg)
+    elseif not category then
+        print("[PvPChest][general] " .. msg)
+    end
+end
+
+-- ----------------------------------------------Ensure chest exists before proceeding
 if CFG.ENABLE_MOD then
     local ChestExists = WorldDBQuery("SELECT `name` FROM `gameobject_template` WHERE `entry` = "..CFG.CHEST_ENTRY)
     if not ChestExists then
@@ -381,7 +410,7 @@ if CFG.ENABLE_MOD then
     end
 end
 
--- shallow-copy defaults + apply overrides
+-- ---------------------------------- shallow-copy defaults + apply overrides
 local function GetCFG(areaId, zoneId)
     local cfg = {}
     -- copy defaults
@@ -399,9 +428,9 @@ local function GetCFG(areaId, zoneId)
             for k, v in pairs(preset) do
                 cfg[k] = v
             end
-            dbg("Applied profile: " .. cfg.PROFILE)
+            dbg("Applied profile: " .. cfg.PROFILE, "kill")
         else
-            dbg("Profile not found: " .. cfg.PROFILE)
+            dbg("Profile not found: " .. cfg.PROFILE, "kill")
         end
     end
     return cfg
@@ -457,7 +486,11 @@ end
 
 -- --------------------------------------------------------------- Discord/Web Hook
 local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
-    if #cfg.WEBHOOK_URLS == 0 then return end
+    if #cfg.WEBHOOK_URLS == 0 then
+        dbg("Webhook disabled: no URLs configured", "webhook")
+        return
+    end
+    dbg("Preparing webhook JSON payload", "webhook")
     local mapName  = (mapId == 0 and "Eastern Kingdoms") or (mapId == 1 and "Kalimdor") or ("Map "..mapId)
     local zoneName = GetAreaName(zoneId)
     local areaName = GetAreaName(areaId)
@@ -488,6 +521,7 @@ local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, area
 
     local isWindows = package.config:sub(1,1) == '\\'
     for _, url in ipairs(cfg.WEBHOOK_URLS) do
+        dbg("Sending webhook to URL: "..url, "webhook")
         if isWindows then
             -- find where this function’s script lives
             local info      = debug.getinfo(postWebhook, "S").source
@@ -508,7 +542,8 @@ local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, area
               'cmd /C curl -H "Content-Type: application/json" -X POST -d "@%s" "%s"',
               filePath, url
             )
-            print("[Ultimate PvP] RAW CMD →", cmd)
+            dbg("Executing command: "..cmd, "webhook")
+            --print("[Ultimate PvP] RAW CMD →", cmd) --Uncomment for RAW Data Dump
             os.execute(cmd)
             os.remove(filePath)
         else
@@ -517,6 +552,7 @@ local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, area
               "curl -m 2 -s -H 'Content-Type: application/json' -X POST -d '%s' '%s' > /dev/null 2>&1 &",
               json, url
             )
+            dbg("Executing Linux/Unix webhook command", "webhook")
             os.execute(cmd)
         end  
     end      
@@ -527,10 +563,10 @@ local function OnLootStateChange(event, go, state)
     local guid = go:GetGUIDLow()
     local list = LootStore[guid]
         if CFG.DEBUG then
-            print(string.format(
-                "[PvPChest][DEBUG] GUID=%d state=%d  stored=%s",
+            dbg(string.format(
+                "GUID=%d state=%d  stored=%s",
                 guid, state, list and #list or 0
-            ))
+            ), "chests")
         end
     if not list then return end
 
@@ -586,9 +622,6 @@ local function BagFamily(item)
     end
     return 0                                      -- unknown ⇒ treat as normal bag
 end
-
-local function dbg(msg) if CFG.DEBUG then print("[PvPChest] "..msg) end end
-
 local function link(it)
     return string.format("|cffffffff|Hitem:%d|h[%s]|h|r",
         it:GetEntry(), it:GetItemLink():match("%[(.-)%]") or "item")
@@ -642,7 +675,7 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     end
 
       -- debug item level
-    dbg(string.format("Checking item %d: class = %d: and subclass = %d", entry, class, subClass))
+    dbg(string.format("Checking item %d: class = %d: and subclass = %d", entry, class, subClass), "items")
 
 
     -- quality
@@ -680,7 +713,7 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     local tradable = it.CanBeTraded and it:CanBeTraded() or false  
 
       -- debug item level
-    dbg(string.format("Checking item %d: ItemLevel = %d", entry, ilvl))
+    dbg(string.format("Checking item %d: ItemLevel = %d", entry, ilvl), "items")
 
     -- unique-equipped flag
     local uniqueEq = false
@@ -689,26 +722,26 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     end
 
       -- debug item level
-    dbg(string.format("Checking item %d: uniqueEq = %s", entry,tostring(uniqueEq)))
+    dbg(string.format("Checking item %d: uniqueEq = %s", entry,tostring(uniqueEq)), "items")
     -- -----------------------------------------------------------
     -- explicit allow / deny
     -- -----------------------------------------------------------
     if cfg.CUSTOM_ALLOW_IDS[entry] then
-        dbg(("Allow – item %d is in CUSTOM_ALLOW_IDS"):format(entry))
+        dbg(("Allow – item %d is in CUSTOM_ALLOW_IDS"):format(entry), "items")
         return true
     end
 
     if cfg.CUSTOM_IGNORE_IDS[entry] then
-        dbg(("Abort – item %d is in CUSTOM_IGNORE_IDS"):format(entry))
+        dbg(("Abort – item %d is in CUSTOM_IGNORE_IDS"):format(entry), "items")
         return false
     end
     -- conjured ------------------------------------------------------------
     if cfg.IGNORE_CONJURED and it:IsConjuredConsumable() then
-        dbg("  → skipped: conjured consumable") return false
+        dbg("  → skipped: conjured consumable", "items") return false
     end
     -- soul-bound ----------------------------------------------------------
     if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then
-        dbg("Abort – soul-bound item, IGNORE_SOULBOUND=true")
+        dbg("Abort – soul-bound item, IGNORE_SOULBOUND=true", "items")
         return false
     end
 
@@ -716,60 +749,60 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     if cfg.IGNORE_QUEST_ITEMS and tpl and tpl.GetBonding then
         local b = tpl:GetBonding()
         if b == 4 or b == 5 then
-            dbg(("Abort – quest item (bonding %d), IGNORE_QUEST_ITEMS=true"):format(b))
+            dbg(("Abort – quest item (bonding %d), IGNORE_QUEST_ITEMS=true"):format(b), "items")
             return false
         end
     end
 
     -- class / subclass–based filters -------------------------------------
     if cfg.IGNORE_CONSUMABLES and class == 0 then
-        dbg("Abort – consumable, IGNORE_CONSUMABLES=true")
+        dbg("Abort – consumable, IGNORE_CONSUMABLES=true", "items")
         return false
     end
 
     if cfg.IGNORE_REAGENTS and (class == 5 or class == 9) then
-        dbg(("Abort – reagent class %d, IGNORE_REAGENTS=true"):format(class))
+        dbg(("Abort – reagent class %d, IGNORE_REAGENTS=true"):format(class), "items")
         return false
     end
 
     if cfg.IGNORE_KEYS and class == 13 then
-        dbg("Abort – key item, IGNORE_KEYS=true")
+        dbg("Abort – key item, IGNORE_KEYS=true", "items")
         return false
     end
 
     if cfg.IGNORE_HEIRLOOMS and quality == 7 then
-        dbg("Abort – heirloom, IGNORE_HEIRLOOMS=true")
+        dbg("Abort – heirloom, IGNORE_HEIRLOOMS=true", "items")
         return false
     end
 
     if cfg.IGNORE_UNIQUE_EQUIPPED and uniqueEq then
-        dbg("Abort – unique-equipped item, IGNORE_UNIQUE_EQUIPPED=true")
+        dbg("Abort – unique-equipped item, IGNORE_UNIQUE_EQUIPPED=true", "items")
         return false
     end
 
     if cfg.IGNORE_ENCHANTED_EQUIPPED and isEnchanted(it) then
-        dbg("Abort – enchanted item, IGNORE_ENCHANTED_EQUIPPED=true")
+        dbg("Abort – enchanted item, IGNORE_ENCHANTED_EQUIPPED=true", "items")
         return false
     end
 
     if cfg.IGNORE_TRADABLE_ITEMS and tradable then
-        dbg("Abort – tradable item, IGNORE_TRADABLE_ITEMS=true")
+        dbg("Abort – tradable item, IGNORE_TRADABLE_ITEMS=true", "items")
         return false
     end
 
     if cfg.IGNORE_NON_TRADABLE_ITEMS and not tradable then
-        dbg("Abort – non-tradable item, IGNORE_NON_TRADABLE_ITEMS=true")
+        dbg("Abort – non-tradable item, IGNORE_NON_TRADABLE_ITEMS=true", "items")
         return false
     end
 
     -- quality / BoP filters ----------------------------------------------
     if cfg.IGNORE_QUALITY[quality] then
-        dbg(("Abort – quality %d ignored via IGNORE_QUALITY"):format(quality))
+        dbg(("Abort – quality %d ignored via IGNORE_QUALITY"):format(quality), "items")
         return false
     end
 
     if cfg.IGNORE_BOP and tpl and tpl.GetBonding and tpl:GetBonding() == 1 then
-        dbg("Abort – Bind-on-Pickup item, IGNORE_BOP=true")
+        dbg("Abort – Bind-on-Pickup item, IGNORE_BOP=true", "items")
         return false
     end
 
@@ -777,14 +810,15 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     if cfg.IGNORE_PROFESSION_BAG_SLOTS and bagSlot and bagSlot > 0 then
         local bag = owner:GetItemByPos(255, bagSlot + 18)        -- 19-22 container slots
         if bag and BagFamily(bag) ~= 0 then                      -- non-generic bag family
-            dbg(("Abort – item in profession bag (slot %d)"):format(bagSlot))
+            dbg(("Abort – item in profession bag (slot %d)"):format(bagSlot), "items")
             return false
         end
     end
     
-    dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice))
+    dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice), "items")
+
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
-        dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW)
+        dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW, "items")
         return false
     end
     
@@ -792,26 +826,26 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
 
     -- vendor price
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
-        dbg(("Abort – vendor value %d < %d"):format(sellPrice, cfg.IGNORE_VENDOR_VALUE_BELOW))
+        dbg(("Abort – vendor value %d < %d"):format(sellPrice, cfg.IGNORE_VENDOR_VALUE_BELOW), "items")
         return false
     end
 
     -- item level
     if cfg.IGNORE_ITEMLEVEL_BELOW > 0 and ilvl < cfg.IGNORE_ITEMLEVEL_BELOW then
-        dbg(("Abort – item level %d < %d"):format(ilvl, cfg.IGNORE_ITEMLEVEL_BELOW))
+        dbg(("Abort – item level %d < %d"):format(ilvl, cfg.IGNORE_ITEMLEVEL_BELOW), "items")
         return false
     end
 
     -- required level
     if cfg.IGNORE_REQUIREDLEVEL_BELOW > 0 and reqLvl < cfg.IGNORE_REQUIREDLEVEL_BELOW then
-        dbg(("Abort – required level %d < %d"):format(reqLvl, cfg.IGNORE_REQUIREDLEVEL_BELOW))
+        dbg(("Abort – required level %d < %d"):format(reqLvl, cfg.IGNORE_REQUIREDLEVEL_BELOW), "items")
         return false
     end
 
     -- stack size
     local stack = it:GetCount()
     if cfg.IGNORE_STACK_SIZE_ABOVE > 0 and stack > cfg.IGNORE_STACK_SIZE_ABOVE then
-        dbg(("Abort – stack size %d > %d"):format(stack, cfg.IGNORE_STACK_SIZE_ABOVE))
+        dbg(("Abort – stack size %d > %d"):format(stack, cfg.IGNORE_STACK_SIZE_ABOVE), "items")
         return false
     end
 
@@ -840,7 +874,7 @@ local function gatherItems(plr, cfg)
                 count  = it:GetCount(),
                 pretty = link(it),
             }
-            dbg(string.format("  %s %s x%d", where, it:GetItemLink(), it:GetCount()))
+            dbg(string.format("  %s %s x%d", where, it:GetItemLink(), it:GetCount()), "items")
         end
     end
 
@@ -881,7 +915,7 @@ local function gatherItems(plr, cfg)
         end
     end
 
-    dbg("Collected "..total.." items from "..plr:GetName())
+    dbg("Collected "..total.." items from "..plr:GetName(), "items")
     return list
 end
 
@@ -908,7 +942,7 @@ RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 -- ------------------------------------------------------------ Multi-drop
 local function spawnChests(killer, victim, items, cfg)
     local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
-    dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)")
+    dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)", "chests")
     local totalChests = math.ceil(take / MAX_CHEST_ITEMS)
 
     -- --------------------------------------------------------------
@@ -942,7 +976,7 @@ local function spawnChests(killer, victim, items, cfg)
         end
     end
 
-    dbg("Spawning " .. totalChests .. " chest(s)")
+    dbg("Spawning " .. totalChests .. " chest(s)", "chests")
     local baseX, baseY, baseZ, baseO = victim:GetX(), victim:GetY(), victim:GetZ(), victim:GetO()
     local radius = 2.5
     local angleStep = (2 * math.pi) / totalChests
@@ -966,12 +1000,12 @@ local function spawnChests(killer, victim, items, cfg)
 
 
         if not chest then
-            dbg("Chest spawn FAILED (" .. c .. ")")
+            dbg("Chest spawn FAILED (" .. c .. ")", "chests")
             break
         end
 
         local guid = chest:GetGUIDLow()
-        dbg("Chest #" .. c .. " GUID " .. guid)
+        dbg("Chest #" .. c .. " GUID " .. guid, "chests")
 
         -- record and fill items
         LootStore[guid] = {}
@@ -982,7 +1016,7 @@ local function spawnChests(killer, victim, items, cfg)
 
             chest:AddLoot(data.entry, data.count)
             victim:RemoveItem(data.entry, data.count)
-            dbg(string.format("    + %s x%d", data.pretty, data.count))
+            dbg(string.format("    + %s x%d", data.pretty, data.count), "chests")
 
             table.insert(LootStore[guid], {
                 entry  = data.entry,
@@ -997,7 +1031,7 @@ local function spawnChests(killer, victim, items, cfg)
             if c == 1 then gold = gold + remainder end
             if gold > 0 then
                 ChestGold[guid] = gold
-                dbg(string.format("    + %s → gold", fmtCoins(gold)))
+                dbg(string.format("    + %s → gold", fmtCoins(gold)), "chests")
             end
         end
 
@@ -1009,6 +1043,7 @@ end
 
 -- -------------------------------------------------------------- MMR helper functions
 local function MMR_Load(player)
+    dbg("MMR_Load started", "mmr")
     if player:GetData("MMR") then return end
     local guid = player:GetGUIDLow()
     local name = player:GetName()
@@ -1022,6 +1057,7 @@ local function MMR_Load(player)
 end
 
 local function MMR_Save(player)
+    dbg("MMR_Save started", "mmr")
     CharDBExecute(string.format(
         "INSERT INTO `%s`.`%s` VALUES (%d,%d,%d,%d,%d) ON DUPLICATE KEY UPDATE "..
         "mmr=VALUES(mmr),kills=VALUES(kills),deaths=VALUES(deaths),streak=VALUES(streak)",
@@ -1033,12 +1069,14 @@ end
 
 
 local function MMR_GetCurrencyCount(player, itemId)
+    dbg("MMR_GetCurrencyCount started", "mmr")
     if itemId == 43308 then return player:GetHonorPoints()
     elseif itemId == 43307 then return player:GetArenaPoints()
     else return player:GetItemCount(itemId, true) end
 end
 
 local function MMR_RemoveItem(victim, itemId, actualGained)
+    dbg("MMR_RemoveItem started", "mmr")
     if itemId == 43308 then victim:ModifyHonorPoints(-actualGained)
     elseif itemId == 43307 then victim:ModifyArenaPoints(-actualGained)
     else victim:RemoveItem(itemId, actualGained) end
@@ -1046,6 +1084,7 @@ local function MMR_RemoveItem(victim, itemId, actualGained)
 end
 
 local function MMR_CurrencyTransactions(killer, victim, rewardFlag, lossFlag, itemId, amount)
+    dbg("MMR_CurrencyTransactions started", "mmr")
     if rewardFlag then
         local initialCount = MMR_GetCurrencyCount(killer, itemId)
         
@@ -1063,6 +1102,7 @@ local function MMR_CurrencyTransactions(killer, victim, rewardFlag, lossFlag, it
 end
 
 local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
+    dbg("MMR_ProcessRewardsAndLosses started", "mmr")
     local mmrDelta = math.abs(victim:GetData("MMR") - killer:GetData("MMR"))
     if mmrDelta < (killer:GetData("MMR") * cfg.MMR_REWARD_THRESHOLD / 100) then return end
     
@@ -1100,10 +1140,11 @@ local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
         MMR_CurrencyTransactions(killer, victim, cfg.MMR_STREAK_REWARD, cfg.MMR_STREAK_LOSS, cfg.MMR_STREAK_ITEM_ID, StreakItemIDChange)
     end
 
-    dbg(string.format("MMR Rewards/losses processed for killer %s, victim %s", killer:GetName(), victim:GetName()))
+    dbg(string.format("MMR Rewards/losses processed for killer %s, victim %s", killer:GetName(), victim:GetName()), "mmr")
 end
 
 local function MMR_Update(killer, victim, cfg)
+    dbg("MMR_Update started", "mmr")
     local killerMMR = killer:GetData("MMR")
     local victimMMR = victim:GetData("MMR")
     
@@ -1138,8 +1179,8 @@ local function MMR_Update(killer, victim, cfg)
         killer:SendBroadcastMessage(icon.."Your open-world PvP MMR has increased by "..mmrGain.." to "..killer:GetData("MMR")..". "..icon)
     end
     
-    dbg(string.format("MMR UPDATE: Killer "..killer:GetName()..", GUIDLow "..killer:GetGUIDLow()..", updated MMR from "..killerMMR.." to "..killer:GetData("MMR")))
-    dbg(string.format("MMR UPDATE: Victim "..victim:GetName()..", GUIDLow "..victim:GetGUIDLow()..", updated MMR from "..victimMMR.." to "..victim:GetData("MMR")))
+    dbg(string.format("MMR UPDATE: Killer "..killer:GetName()..", GUIDLow "..killer:GetGUIDLow()..", updated MMR from "..killerMMR.." to "..killer:GetData("MMR")), "mmr")
+    dbg(string.format("MMR UPDATE: Victim "..victim:GetName()..", GUIDLow "..victim:GetGUIDLow()..", updated MMR from "..victimMMR.." to "..victim:GetData("MMR")), "mmr")
 end
 
 -- ------------------------------------------------------------ Load/save MMR to persistent storage
@@ -1166,135 +1207,164 @@ local function OnKillPlayer(event, killer, victim)
     --suicide check
     if IGNORE_SUICIDE then
         if killer:GetGUIDLow() == victim:GetGUIDLow() then
-            dbg("Abort – self-kill detected")
+            dbg("Abort – self-kill detected", "kill")
             return
         end
     end
-    dbg(string.format("--- PvP kill detected in zone %d ---", zoneId))
+    dbg(string.format("--- PvP kill detected in zone %d ---", zoneId), "kill")
 
     -- 0) master switch
     if not cfg.ENABLE_MOD then
-        dbg("Abort – mod disabled (ENABLE_MOD=false)")
+        dbg("Abort – mod disabled (ENABLE_MOD=false)", "kill")
         return
     end
     if cfg.ENABLE_KILL_FARM_PROTECTION then
         -- .5) farming guard
         if isFarmed(killer, victim, cfg) then
-            dbg("Abort – farming guard triggered")
+            dbg("Abort – farming guard triggered", "kill")
             return
         end
     end
 
     -- 1) silly ones
     if cfg.IGNORE_IF_KILLER_DRUNK and killer:GetDrunkValue() > 0 then
-    dbg("Abort – killer drunk stage " .. killer:GetDrunkValue())
+    dbg("Abort – killer drunk stage " .. killer:GetDrunkValue(), "kill")
         return
     end
 
     if cfg.IGNORE_IF_VICTIM_DRUNK and victim:GetDrunkValue() > 0 then
-        dbg("Abort – victim drunk stage " .. victim:GetDrunkValue())
+        dbg("Abort – victim drunk stage " .. victim:GetDrunkValue(), "kill")
         return
     end
 
     if cfg.IGNORE_AFK_VICTIM and victim:IsAFK() then
-        dbg("Abort – victim is AFK")
+        dbg("Abort – victim is AFK", "kill")
         return
     end
 
     if cfg.IGNORE_VICTIM_ALLIANCE and victim:IsAlliance() then
-        dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true")
+        dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true", "kill")
         return
     end
 
     if cfg.IGNORE_VICTIM_HORDE and victim:IsHorde() then
-        dbg("Abort – victim is Horde, IGNORE_VICTIM_HORDE=true")
+        dbg("Abort – victim is Horde, IGNORE_VICTIM_HORDE=true", "kill")
         return
     end
+
+        -- Victim class ignore
+    local victimClass = victim:GetClass()
+    if cfg.IGNORE_VICTIM_PLAYER_CLASS[victimClass] then
+        dbg("Abort – victim class "..victimClass.." ignored via IGNORE_VICTIM_PLAYER_CLASS", "kill")
+        return
+    end
+
+    -- Victim race ignore
+    local victimRace = victim:GetRace()
+    if cfg.IGNORE_VICTIM_PLAYER_RACES[victimRace] then
+        dbg("Abort – victim race "..victimRace.." ignored via IGNORE_VICTIM_PLAYER_RACES", "kill")
+        return
+    end
+
+    -- Killer class ignore
+    local killerClass = killer:GetClass()
+    if cfg.IGNORE_KILLER_PLAYER_CLASS[killerClass] then
+        dbg("Abort – killer class "..killerClass.." ignored via IGNORE_KILLER_PLAYER_CLASS", "kill")
+        return
+    end
+
+    -- Killer race ignore
+    local killerRace = killer:GetRace()
+    if cfg.IGNORE_KILLER_PLAYER_RACES[killerRace] then
+        dbg("Abort – killer race "..killerRace.." ignored via IGNORE_KILLER_PLAYER_RACES", "kill")
+        return
+    end
+
     -- 2) battleground & arena toggle
     if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
-        dbg("Battleground – abort")
+        dbg("Battleground – abort", "kill")
         return
     end
     if cfg.IGNORE_ARENA           and (killer:InArena() or victim:InArena()) then return end
 
     -- 4) level gates
     if victim:GetLevel() < cfg.MIN_LEVEL or victim:GetLevel() > cfg.MAX_LEVEL then
-        dbg("Outside level gate – abort")
+        dbg("Outside level gate – abort", "kill")
         return
     end
 
     -- 5) level-difference window
     local diff = math.abs(killer:GetLevel() - victim:GetLevel())
     if diff < cfg.MIN_LEVEL_DIFF or diff > cfg.MAX_LEVEL_DIFF then
-        dbg("Level diff "..diff.." outside window – abort")
+        dbg("Level diff "..diff.." outside window – abort", "kill")
         return
     end
 
     -- 6) map / zone filters 
     if next(cfg.MAP_ALLOWLIST) and not cfg.MAP_ALLOWLIST[mapId] then
-        dbg("Abort – mapId " .. mapId .. " not in allow-list")
+        dbg("Abort – mapId " .. mapId .. " not in allow-list", "kill")
         return
     end
     if cfg.MAP_BLOCKLIST[mapId] then
-        dbg("Abort – mapId " .. mapId .. " is block-listed")
+        dbg("Abort – mapId " .. mapId .. " is block-listed", "kill")
         return
     end
 
     if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then
-        dbg("Abort – zoneId " .. zoneId .. " not in allow-list")
+        dbg("Abort – zoneId " .. zoneId .. " not in allow-list", "kill")
         return
     end
     if cfg.ZONE_BLOCKLIST[zoneId] then
-        dbg("Abort – zoneId " .. zoneId .. " is block-listed")
+        dbg("Abort – zoneId " .. zoneId .. " is block-listed", "kill")
         return
     end
 
     if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then
-        dbg("Abort – areaId " .. areaId .. " not in allow-list")
+        dbg("Abort – areaId " .. areaId .. " not in allow-list", "kill")
         return
     end
     if cfg.AREA_BLOCKLIST[areaId] then
-        dbg("Abort – areaId " .. areaId .. " is block-listed")
+        dbg("Abort – areaId " .. areaId .. " is block-listed", "kill")
         return
     end
 
     -- 7) spirit-healer proximity
     if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
-        dbg("Near spirit healer – abort")
+        dbg("Near spirit healer – abort", "kill")
         return
     end
 
     -- 8) capital / neutral city gates
     if cfg.IGNORE_CAPITALS and CAPITAL_AREAS[areaId] then
-        dbg("Inside capital city – abort")
+        dbg("Inside capital city – abort", "kill")
         return
     end
     if cfg.IGNORE_NEUTRAL_CITIES and NEUTRAL_CITY_AREAS[areaId] then
-        dbg("Inside neutral city – abort")
+        dbg("Inside neutral city – abort", "kill")
         return
     end
 
     -- 9) Custom Aura Checks for both Victim/Killer
     for spellId in pairs(cfg.IGNORE_AURA_ON_VICTIM) do
         if victim:HasAura(spellId) then
-            dbg("Abort – victim has ignored aura " .. spellId)
+            dbg("Abort – victim has ignored aura " .. spellId, "kill")
             return
         end
     end
 
     for spellId in pairs(cfg.IGNORE_AURA_ON_KILLER) do
         if killer:HasAura(spellId) then
-            dbg("Abort – killer has ignored aura " .. spellId)
+            dbg("Abort – killer has ignored aura " .. spellId, "kill")
             return
         end
     end
 
     dbg("Killer "..killer:GetName().." ("..killer:GetLevel()..") / Victim "
-        ..victim:GetName().." ("..victim:GetLevel()..")")
+        ..victim:GetName().." ("..victim:GetLevel()..")", "kill")
 
     -- resurrection sickness
     if cfg.IGNORE_RESS_SICKNESS and victim:HasAura(15007) then
-        dbg("Resurrection sickness – abort")
+        dbg("Resurrection sickness – abort", "kill")
         return
     end
 
@@ -1304,7 +1374,7 @@ local function OnKillPlayer(event, killer, victim)
     
     local items = gatherItems(victim, cfg)
     if #items == 0 then
-        dbg("No items to drop")
+        dbg("No items to drop", "kill")
         return
     end
 
@@ -1334,7 +1404,7 @@ local function OnKillPlayer(event, killer, victim)
     for _, fn in ipairs(PvPLootHooks) do
         pcall(fn, killer, victim, items, rawGive, cfg, mapId, zoneId, areaId)
     end
-    dbg("--- done ---")
+    dbg("--- done ---", "kill")
 end
 
 RegisterPlayerEvent(6, OnKillPlayer)

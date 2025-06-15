@@ -118,6 +118,10 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_PROFESSION_BAG_SLOTS` | Skip items inside profession-specific bags |
 | `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |
 | `IGNORE_SUICIDE` | Skip if victim is also killer |
+| `IGNORE_PLAYER_VICTIM_RACE` | Skip if victim is particular race |
+| `IGNORE_PLAYER_VICTIM_CLASS` | Skip if victim is particular class |
+| `IGNORE_PLAYER_KILLER_RACE` | Skip if killer is particular race |
+| `IGNORE_PLAYER_KILLER_CLASS` | Skip if killer is particular class |
 |  |  |
 |  |  |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
