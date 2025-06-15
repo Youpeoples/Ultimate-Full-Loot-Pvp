@@ -68,6 +68,21 @@ local CFG = {
     -- Master toggle
     -- ------------------------------------------------------------------
     ENABLE_MOD                 = true,          -- Turn System on/off
+
+    -- ------------------------------------------------------------------
+    -- Webhook Bridge (Discord, etc.)   ---PROLLY NOT PERFECT---
+    --  I can only test windows atm. Unsure if linux actually works.
+    -- ------------------------------------------------------------------
+    ENABLE_WEBHOOK             = false,
+    WEBHOOK_URLS = {                       -- may contain many
+        "https://Your-API-ADDRESS",
+    },
+    WEBHOOK_ASYNC              = true,             
+    WEBHOOK_USERNAME           = "Ultimate PvP",
+    WEBHOOK_ICON_URL           = "https://i.imgur.com/W9VYGc6.png", --a skull
+    HOOK_SEND_ITEM_THRESHOLD   = 0,   -- hook if at least this many items drop
+    HOOK_SEND_GOLD_THRESHOLD   = 0,   -- hook if at least this much gold drops
+
      -- ------------------------------------------------------------------
     -- Command toggle. ( Allows players to see exact risk stats of zone)
     -- ------------------------------------------------------------------
@@ -149,7 +164,7 @@ local CFG = {
     -- ------------------------------------------------------------------
     -- Gold filters
     -- ------------------------------------------------------------------
-    GOLD_CAP_PER_KILL          = 25000000, -- 2500 g cap (0 = no cap)
+    GOLD_CAP_PER_KILL          = 25000000, -- (0 = no cap) MMR mutli affected
     GOLD_PERCENT_MAX           = 100,      -- 50-100 % example
     GOLD_PERCENT_MIN           = 100,      -- roll between MIN and MAX %
     SPLIT_GOLD_BETWEEN_CHESTS  = true,
@@ -194,6 +209,14 @@ local CFG = {
     IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
     IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
     SPIRIT_HEALER_RANGE       = 20,       -- metres
+
+    -- ------------------------------------------------------------------
+    -- Kill Farming Guard
+    -- ------------------------------------------------------------------
+    ENABLE_KILL_FARM_PROTECTION = true,   -- add this to your CFG
+    KILL_FARM_WINDOW_SEC        = 900,    -- time-window (15 min)
+    KILL_FARM_MAX_KILLS         = 3,      -- kills allowed in that window
+    KILL_FARM_PUNISH_MSG        = "No loot / rating – farming detected.",
 
     -- ------------------------------------------------------------------
     -- MMR
@@ -378,7 +401,119 @@ local LootStore = {}
 local MAX_CHEST_ITEMS = 16  -- engine shows max 16 loot slots
 local SPIRIT_HEALER_IDS = {[6491]=true,[29259]=true,[32537]=true}
 
--- -------------------------------------------------------------- utils + debug
+--========================================================================--
+--                           UTILS & DEBUGS                               --
+--========================================================================--
+--------------------------------------------------------------------Name Getter
+local MAP_NAMES = {
+  [0] = "Eastern Kingdoms",
+  [1] = "Kalimdor",
+}
+
+local function getLocationNames(mapId, zoneId, areaId)
+  -- map
+  local mapName = MAP_NAMES[mapId] or ("Map "..mapId)
+  -- zone & area via Eluna’s Global:GetAreaName
+  local zoneName = GetAreaName(zoneId) or ("Zone "..zoneId)
+  local areaName = GetAreaName(areaId) or ("Area "..areaId)
+  return mapName, zoneName, areaName
+end
+-- ------------------------------------------------------------- kill farm protection
+local KillFarm = {}   -- [killer][victim] = {cnt = 0, first = 0}
+local function isFarmed(killer, victim, cfg)
+    local kg, vg = killer:GetGUIDLow(), victim:GetGUIDLow()
+    local now    = os.time()
+    KillFarm[kg]           = KillFarm[kg] or {}
+    local rec              = KillFarm[kg][vg] or {cnt = 0, first = now}
+    if now - rec.first > cfg.KILL_FARM_WINDOW_SEC then
+        rec.cnt, rec.first = 0, now                     -- window expired
+    end
+    rec.cnt = rec.cnt + 1
+    KillFarm[kg][vg] = rec
+    if rec.cnt > cfg.KILL_FARM_MAX_KILLS then           -- punish
+        killer:SendBroadcastMessage("|cffff0000[Ultimate PvP]|r "..cfg.KILL_FARM_PUNISH_MSG)
+        return true
+    end
+    return false
+end
+-- -------------------------------------------------------------- Gold Format
+local ChestGold = {}                -- chestGUID → pending gold
+local function fmtCoins(c)
+    local g,s,co = math.floor(c/10000), math.floor(c/100)%100, c%100
+    local t={} if g>0 then t[#t+1]=g.." g" end
+    if s>0 then t[#t+1]=s.." s" end
+    if co>0 or #t==0 then t[#t+1]=co.." c" end
+    return table.concat(t," ")
+end
+
+-- --------------------------------------------------------------- Discord/Web Hook
+local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
+    if #cfg.WEBHOOK_URLS == 0 then return end
+    local mapName  = (mapId == 0 and "Eastern Kingdoms") or (mapId == 1 and "Kalimdor") or ("Map "..mapId)
+    local zoneName = GetAreaName(zoneId)
+    local areaName = GetAreaName(areaId)
+
+    local json = string.format([[
+    {
+      "username":"%s",
+      "avatar_url":"%s",
+      "embeds":[
+        {
+          "title":"%s ▸ %s",
+          "fields":[
+            {"name":"Items Lost","value":"%d","inline":true},
+            {"name":"Gold Lost","value":"%s","inline":true},
+            {"name":"Map","value":"%s","inline":false},
+            {"name":"Zone","value":"%s","inline":true},
+            {"name":"Area","value":"%s","inline":true}
+          ]
+        }
+      ]
+    }
+    ]],
+      cfg.WEBHOOK_USERNAME, cfg.WEBHOOK_ICON_URL,
+      killer:GetName(), victim:GetName(),
+      #items, fmtCoins(gold),
+      mapName, zoneName, areaName
+    )
+
+    local isWindows = package.config:sub(1,1) == '\\'
+    for _, url in ipairs(cfg.WEBHOOK_URLS) do
+        if isWindows then
+            -- find where this function’s script lives
+            local info      = debug.getinfo(postWebhook, "S").source
+            local scriptPath= info:sub(2):match("(.+[/\\])") or "./"
+            local filePath  = scriptPath .. "ultpvp_webhook.json"
+
+            -- write the JSON beside the script
+            local f, err = io.open(filePath, "w")
+            if not f then
+              print("[Ultimate PvP] ERROR writing to", filePath, "–", err)
+            else
+              f:write(json)
+              f:close()
+            end
+
+            -- then curl it
+            local cmd = string.format(
+              'cmd /C curl -v -H "Content-Type: application/json" -X POST -d "@%s" "%s"',
+              filePath, url
+            )
+            print("[Ultimate PvP] RAW CMD →", cmd)
+            os.execute(cmd)
+            os.remove(filePath)
+        else
+            -- Linux/Unix: direct, backgrounded curl with in-memory JSON
+            local cmd = string.format(
+              "curl -m 2 -s -H 'Content-Type: application/json' -X POST -d '%s' '%s' > /dev/null 2>&1 &",
+              json, url
+            )
+            os.execute(cmd)
+        end  
+    end      
+end         
+
+-- -------------------------------------------------------------------- Fix Chest Prep
 local function OnLootStateChange(event, go, state)
     local guid = go:GetGUIDLow()
     local list = LootStore[guid]
@@ -402,7 +537,7 @@ local function OnLootStateChange(event, go, state)
     end
 end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 9, OnLootStateChange)
-
+-- -------------------------------------------------------------------- Local Check for Enabled
 local function ModIsActiveHere(player, cfg)
     local mapId  = player:GetMapId()
     local zoneId = player:GetZoneId()
@@ -422,11 +557,13 @@ local function ModIsActiveHere(player, cfg)
 
     return true
 end
+
 -- ------------------------------------------------------------------
 -- Return bag-family mask for an item if the build supports it
 --  0  = regular bag
 -- >0 = profession-specific
 -- ------------------------------------------------------------------
+
 local function BagFamily(item)
     if not item then return 0 end
     if item.GetBagFamily then                     -- newer cores
@@ -442,19 +579,12 @@ local function BagFamily(item)
 end
 
 local function dbg(msg) if CFG.DEBUG then print("[PvPChest] "..msg) end end
+
 local function link(it)
     return string.format("|cffffffff|Hitem:%d|h[%s]|h|r",
         it:GetEntry(), it:GetItemLink():match("%[(.-)%]") or "item")
 end
-local ChestGold = {}                -- chestGUID → pending gold
-local function fmtCoins(c)
-    local g,s,co = math.floor(c/10000), math.floor(c/100)%100, c%100
-    local t={} if g>0 then t[#t+1]=g.." g" end
-    if s>0 then t[#t+1]=s.." s" end
-    if co>0 or #t==0 then t[#t+1]=co.." c" end
-    return table.concat(t," ")
-end
--- --------------------------------------------------------- helper: spirit range
+-- --------------------------------------------------------- spirit range helper
 local function IsNearSpiritHealer(plr, dist)
     dist=dist or 20
     for _,cr in pairs(plr:GetCreaturesInRange(dist)) do
@@ -857,6 +987,7 @@ local function spawnChests(killer, victim, items, cfg)
         -- force chest into READY
         chest:SetLootState(1)
     end
+    return rawGive
 end
 
 -- -------------------------------------------------------------- MMR helper functions
@@ -1021,6 +1152,13 @@ local function OnKillPlayer(event, killer, victim)
         dbg("Abort – mod disabled (ENABLE_MOD=false)")
         return
     end
+    if cfg.ENABLE_KILL_FARM_PROTECTION then
+        -- .5) farming guard
+        if isFarmed(killer, victim, cfg) then
+            dbg("Abort – farming guard triggered")
+            return
+        end
+    end
 
     -- 1) silly ones
     if cfg.IGNORE_IF_KILLER_DRUNK and killer:GetDrunkValue() > 0 then
@@ -1146,9 +1284,28 @@ local function OnKillPlayer(event, killer, victim)
     end
 
     shuffle(items)
-    spawnChests(killer, victim, items, cfg)
+    local rawGive = spawnChests(killer, victim, items, cfg)
 
-    --Hook for cross script/web compatability
+    ---------------------------------------------Hook for cross script/web compatability
+        if cfg.ENABLE_WEBHOOK and #cfg.WEBHOOK_URLS > 0 then
+            -- schedule the webhook to fire 50 ms later,
+            -- letting the kill-handler finish without blocking
+            local kGUID = killer:GetGUIDLow()
+            local vGUID = victim:GetGUIDLow()
+
+            CreateLuaEvent(function()
+                local killer2 = GetPlayerByGUID(kGUID)
+                local victim2 = GetPlayerByGUID(vGUID)
+                if not killer2 or not victim2 then
+                    return  -- they logged out or object expired
+                end
+                if #items >= cfg.HOOK_SEND_ITEM_THRESHOLD
+                and rawGive >= cfg.HOOK_SEND_GOLD_THRESHOLD then
+                    postWebhook(killer2, victim2, items, rawGive, cfg, mapId, zoneId, areaId)
+                end
+            end, 50, 1)
+        end
+
     for _, fn in ipairs(PvPLootHooks) do
         pcall(fn, killer, victim, items, rawGive, cfg, mapId, zoneId, areaId)
     end
