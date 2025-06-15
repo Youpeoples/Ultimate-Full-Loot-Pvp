@@ -97,7 +97,13 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 |  |  |
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
-| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore |
+| `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore ||  |  |
+|  |  |
+|  |  |
+| `ENABLE_KILL_FARM_PROTECTION` | Toggle on/off protection |
+| `KILL_FARM_WINDOW_SEC` | Checked time window |
+| `KILL_FARM_MAX_KILLS` | Kills allowed in that windows |
+| `KILL_FARM_PUNISH_MSG` | Msg to send upon limit met |
 |  |  |
 |  |  |
 | `IGNORE_AFK_VICTIM` | Skip AFK victims |
@@ -111,6 +117,7 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
 | `IGNORE_PROFESSION_BAG_SLOTS` | Skip items inside profession-specific bags |
 | `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |
+| `IGNORE_SUICIDE` | Skip if victim is also killer |
 |  |  |
 |  |  |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
