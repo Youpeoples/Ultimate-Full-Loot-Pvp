@@ -952,8 +952,19 @@ local function spawnChests(killer, victim, items, cfg)
         local angle = angleStep * (c - 1)
         local cx = baseX + math.cos(angle) * radius
         local cy = baseY + math.sin(angle) * radius
+        local worldObject = killer:GetNearObject(200)
+        local chest
+        if worldObject then
+            chest = worldObject:SummonGameObject(
+                cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC
+            )
+        else
+            chest = killer:SummonGameObject(
+                cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC
+            )
+        end
 
-        local chest = killer:SummonGameObject(cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC)
+
         if not chest then
             dbg("Chest spawn FAILED (" .. c .. ")")
             break
@@ -961,9 +972,6 @@ local function spawnChests(killer, victim, items, cfg)
 
         local guid = chest:GetGUIDLow()
         dbg("Chest #" .. c .. " GUID " .. guid)
-
-        -- free-for-all
-        pcall(function() chest:SetLootRecipient(nil) end)
 
         -- record and fill items
         LootStore[guid] = {}
