@@ -111,6 +111,7 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `IGNORE_NEUTRAL_CITIES` | Skip Neutral Cities|
 | `IGNORE_PROFESSION_BAG_SLOTS` | Skip items inside profession-specific bags |
 | `IGNORE_RESS_SICKNESS` | Skip resurrection-sick victims |
+| `IGNORE_SUICIDE` | Skip if victim is also killer |
 |  |  |
 |  |  |
 | `IGNORE_SPIRIT_HEALER_RANGE` | 	Skip victims near spirit healer |
