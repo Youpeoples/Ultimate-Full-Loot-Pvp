@@ -20,21 +20,27 @@
 -- ─────────────────────────────────────────────────────────────────────────────────────────
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────
---  PvP LOOT EVENTHOOK:
---  Lets external scripts listen for PvP loot drops and react to them.
---  
---  To use: another Lua script can register a callback with:
+--  PvP LOOT EVENTHOOK + WEBHOOK BRIDGE:
+--  Lets external scripts *and* external systems (Discord, etc.) react to PvP kills.
 --
---    RegisterPvPLootHook(function(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
---        -- respond to the event, e.g. logging, alerting, custom behavior
---    end)
+--  ▸ SCRIPT HOOK:
+--    Register a callback from any Lua script:
 --
---  ARGUMENTS PASSED TO EACH HOOK:
+--      RegisterPvPLootHook(function(killer, victim, items, gold, cfg, mapId, zoneId, areaId)
+--          -- e.g. logging, reward logic, broadcasting, etc.
+--      end)
+--
+--  ▸ DISCORD / WEBHOOK:
+--    When ENABLE_WEBHOOK is true and a kill meets configured thresholds:
+--    • A Discord-style webhook is dispatched (async, with player/item/gold/zone info)
+--    • JSON body includes killer/victim names, item count, gold stolen, and location.
+--
+--  ARGUMENTS PASSED TO EACH SCRIPT HOOK:
 --      killer     – Eluna player object who got the kill
 --      victim     – Eluna player object who died
 --      items      – Table of item data selected for drop (via gatherItems)
 --      gold       – Amount of copper taken from victim (after cap applied)
---      cfg        – Final, merged config that governed this kill (all overrides/profiles applied)
+--      cfg        – Final, merged config (zone/area/profile resolved)
 --      mapId      – Map where the kill occurred
 --      zoneId     – Zone where the kill occurred
 --      areaId     – Area where the kill occurred
@@ -44,12 +50,12 @@
 --          SendWorldMessage(("%s looted %s and %d item(s) from %s in zone %d")
 --              :format(killer:GetName(), fmtCoins(gold), #items, victim:GetName(), zoneId))
 --      end)
-
---         PRINT RESULT: Thrall looted 12g 45s 89c and 3 item(s) from Jaina in zone 495
 --
---  This system is optional and does not interfere with normal loot operation.
---  Hooks are pcall-wrapped and fail-safe.
--- ──────────────────────────────────────────────────────────────────────────────────────────
+--         → Thrall looted 12g 45s 89c and 3 item(s) from Jaina in zone 495
+--
+--  Both systems are optional and fail-safe.
+--  Webhook and script hook can operate independently or together.
+-- ─────────────────────────────────────────────────────────────────────────────────────────
 
 -- ──────────────────────────────────────────────────────────────────────────────────────────
 --  OVERRIDE HIERARCHY
@@ -61,6 +67,8 @@
 --  Any key omitted at a given level automatically inherits from the layer above
 --  (Area → Zone → CFG). If a PROFILE is defined (from any layer), it is applied last
 --  and overwrites all other values.
+-- ──────────────────────────────────────────────────────────────────────────────────────────
+
 -- ──────────────────────────────────────────────────────────────────────────────────────────
 
 local CFG = {
