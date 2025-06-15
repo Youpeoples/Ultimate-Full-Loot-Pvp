@@ -132,6 +132,11 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `DESPAWN_SEC` | Chest lifetime in seconds |
 |  |  |
 |  |  |
+| `ENABLE_WEBHOOK` | Send Kill Feed to Discord or Similar |
+| `HOOK_SEND_ITEM_THRESHOLD` | Limit send based on items dropped | 
+| `HOOK_SEND_GOLD_THRESHOLD` | Limit send based on gold dropped |
+|  |  |
+|  |  |
 | `DEBUG` | `true` for chatty console logs |
 
 
