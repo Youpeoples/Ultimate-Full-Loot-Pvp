@@ -34,6 +34,8 @@
 * **Loot Profile Presets** – Named, easily sharable and reusable configs that override all settings.
 
 * **Script Hook** – External scripts can register to react to loot events.
+
+* **Matchmaking Rating (MMR) System** – Track player performance and adjust rewards based on MMR differences.
   
 * **GM Commands** - instantly apply test configuration changes in-game without restarting the server or reloading scripts.
   
@@ -144,6 +146,15 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `HOOK_SEND_GOLD_THRESHOLD` | Limit send based on gold dropped |
 |  |  |
 |  |  |
+| `MMR_ENABLED` | Enable/disable MMR extension |
+| `MMR_GAIN` | Base rate at which players gain MMR |
+| `MMR_LOSS` | Base rate at which players lose MMR |
+| `MMR_GOLD_REWARD` | Enable/disable gold reward based on MMR |
+| `MMR_GOLD_REWARD_RATIO` | Multiplier for gold reward based on MMR difference |
+| `MMR_KILL_ITEM_ID` | Item ID for kill reward currency |
+| `MMR_STREAK_ITEM_ID` | Item ID for streak reward currency |
+| | |
+| | |
 | `DEBUG` | `true` for chatty console logs |
 
 
@@ -154,11 +165,12 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 ## How It Works
 1. **Kill detection** – `ON_KILL_PLAYER` event fires.  
 2. **Safety checks** – level, map/zone, Battleground, spirit healer range, etc.  
-3. **Inventory sweep** – equipped slots → backpack → extra bags.  
-4. **Item & gold selection** – filtered list shuffled; gold % rolled & capped.  
-5. **Chest spawn** – chests arranged in a circle around the corpse.  
-6. **Looting** – any player can loot.
-7. **Gold** - configurable to drop from a single chest or split across all chests.
+3. **MMR** - Calculate MMR, kill streak change, and optional currency rewards.
+4. **Inventory sweep** – equipped slots → backpack → extra bags.  
+5. **Item & gold selection** – filtered list shuffled; gold % rolled & capped.  
+6. **Chest spawn** – chests arranged in a circle around the corpse.  
+7. **Looting** – any player can loot.
+8. **Gold** - configurable to drop from a single chest or split across all chests.
 
 DEBUG mode echoes every action, GUID, and item removed to the server console for painless troubleshooting.
 
