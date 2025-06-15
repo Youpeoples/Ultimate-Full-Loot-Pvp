@@ -201,20 +201,20 @@ local CFG = {
     IGNORE_ARENA              = true,     -- skip kills inside arenas 
     IGNORE_BATTLEGROUND       = true,     -- skip BG kills
     IGNORE_CAPITALS           = true,     -- skip kills in faction capitals
-    IGNORE_IF_KILLER_DRUNK    = false,    -- why not?
-    IGNORE_IF_VICTIM_DRUNK    = false,    -- its only fair.
+    IGNORE_IF_KILLER_DRUNK    = false,    -- skip if killer is drunk
+    IGNORE_IF_VICTIM_DRUNK    = false,    -- skip if victim is drunk
     IGNORE_VICTIM_ALLIANCE    = false,    -- skip if victim alliance
     IGNORE_VICTIM_HORDE       = false,    -- skip if victim horde
     IGNORE_NEUTRAL_CITIES     = true,     -- skip kills in neutral hubs
     IGNORE_RESS_SICKNESS      = true,     -- skip if victim has aura 15007
     IGNORE_SUICIDE            = false,    -- skip if victim is also killer
-    IGNORE_SPIRIT_HEALER_RANGE= true,     -- apply range check below
-    SPIRIT_HEALER_RANGE       = 20,       -- metres
+    IGNORE_SPIRIT_HEALER_RANGE= true,     -- skip if in/near graveyard
+    SPIRIT_HEALER_RANGE       = 20,       -- area around healer to check^
 
     -- ------------------------------------------------------------------
     -- Kill Farming Guard
     -- ------------------------------------------------------------------
-    ENABLE_KILL_FARM_PROTECTION = true,   -- add this to your CFG
+    ENABLE_KILL_FARM_PROTECTION = true,   -- Toggle on/off protection
     KILL_FARM_WINDOW_SEC        = 900,    -- time-window (15 min)
     KILL_FARM_MAX_KILLS         = 3,      -- kills allowed in that window
     KILL_FARM_PUNISH_MSG        = "No loot / rating – farming detected.",
