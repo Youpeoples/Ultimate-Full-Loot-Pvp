@@ -410,29 +410,25 @@ if CFG.ENABLE_MOD then
     end
 end
 
--- ---------------------------------- shallow-copy defaults + apply overrides
+-- ---------------------------------- shallow-copy defaults + apply overrides + cache
+local CachedCFGs = {}
+function FlushCFGCache()
+    CachedCFGs = {}
+    dbg("[Ultimate PvP] Cached config flushed")
+end
 local function GetCFG(areaId, zoneId)
+    local key = zoneId .. ":" .. areaId
+    if CachedCFGs[key] then return CachedCFGs[key] end
+
     local cfg = {}
-    -- copy defaults
     for k, v in pairs(DefaultCFG) do cfg[k] = v end
-    -- apply zone-level tweaks (if any)
-    local z = ZoneOverrides[zoneId]
-    if z then for k, v in pairs(z) do cfg[k] = v end end
-    -- apply area-level tweaks (if any) – wins over everything
-    local a = AreaOverrides[areaId]
-    if a then for k, v in pairs(a) do cfg[k] = v end end
-    -- check for preset profiles
+    local z = ZoneOverrides[zoneId]; if z then for k, v in pairs(z) do cfg[k] = v end end
+    local a = AreaOverrides[areaId]; if a then for k, v in pairs(a) do cfg[k] = v end end
     if cfg.PROFILE then
         local preset = LOOT_PROFILES[cfg.PROFILE]
-        if preset then
-            for k, v in pairs(preset) do
-                cfg[k] = v
-            end
-            dbg("Applied profile: " .. cfg.PROFILE, "kill")
-        else
-            dbg("Profile not found: " .. cfg.PROFILE, "kill")
-        end
+        if preset then for k, v in pairs(preset) do cfg[k] = v end end
     end
+    CachedCFGs[key] = cfg
     return cfg
 end
 local LootStore = {} 
@@ -526,7 +522,7 @@ local function postWebhook(killer, victim, items, gold, cfg, mapId, zoneId, area
             -- find where this function’s script lives
             local info      = debug.getinfo(postWebhook, "S").source
             local scriptPath= info:sub(2):match("(.+[/\\])") or "./"
-            local filePath  = scriptPath .. "ultpvp_webhook.json"
+            local filePath = string.format("%sultpvp_webhook_%d_%d.json", scriptPath, victim:GetGUIDLow(), os.time())
 
             -- write the JSON beside the script
             local f, err = io.open(filePath, "w")
@@ -735,17 +731,17 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
         dbg(("Abort – item %d is in CUSTOM_IGNORE_IDS"):format(entry), "items")
         return false
     end
-    -- conjured ------------------------------------------------------------
+    -- ---------------------------------------------------------------conjured
     if cfg.IGNORE_CONJURED and it:IsConjuredConsumable() then
         dbg("  → skipped: conjured consumable", "items") return false
     end
-    -- soul-bound ----------------------------------------------------------
+    -- ----------------------------------------------------------soul-bound 
     if cfg.IGNORE_SOULBOUND and it:IsSoulBound() then
         dbg("Abort – soul-bound item, IGNORE_SOULBOUND=true", "items")
         return false
     end
 
-    -- quest item ----------------------------------------------------------
+    -- -----------------------------------------------------------------quest item 
     if cfg.IGNORE_QUEST_ITEMS and tpl and tpl.GetBonding then
         local b = tpl:GetBonding()
         if b == 4 or b == 5 then
@@ -754,7 +750,7 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
         end
     end
 
-    -- class / subclass–based filters -------------------------------------
+    --  ------------------------------------------------class / subclass–based filters
     if cfg.IGNORE_CONSUMABLES and class == 0 then
         dbg("Abort – consumable, IGNORE_CONSUMABLES=true", "items")
         return false
@@ -795,7 +791,7 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
         return false
     end
 
-    -- quality / BoP filters ----------------------------------------------
+    --  ----------------------------------------------------------quality / BoP filters
     if cfg.IGNORE_QUALITY[quality] then
         dbg(("Abort – quality %d ignored via IGNORE_QUALITY"):format(quality), "items")
         return false
@@ -806,7 +802,7 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
         return false
     end
 
-    -- profession-bag slots (bags 1-4 only) --------------------------------
+    --  ----------------------------------------------profession-bag slots (bags 1-4 only)
     if cfg.IGNORE_PROFESSION_BAG_SLOTS and bagSlot and bagSlot > 0 then
         local bag = owner:GetItemByPos(255, bagSlot + 18)        -- 19-22 container slots
         if bag and BagFamily(bag) ~= 0 then                      -- non-generic bag family
@@ -817,12 +813,8 @@ local function ShouldDropItem(it, owner, bagSlot, cfg)
     
     dbg(string.format("Checking %s: sellPrice = %d", it:GetItemLink(), sellPrice), "items")
 
-    if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
-        dbg("  → skipped: below threshold of "..cfg.IGNORE_VENDOR_VALUE_BELOW, "items")
-        return false
-    end
     
-    -- numeric thresholds (only if values known)
+    -- ----------------------------------------------numeric thresholds (only if values known)
 
     -- vendor price
     if cfg.IGNORE_VENDOR_VALUE_BELOW > 0 and sellPrice < cfg.IGNORE_VENDOR_VALUE_BELOW then
@@ -864,7 +856,7 @@ end
 local function gatherItems(plr, cfg)
     local list, total = {}, 0
 
-    -- internal helper --------------------------------------------------
+    -- --------------------------------------------------internal helper 
     local function add(it, where, bagIndex)
         if it and ShouldDropItem(it, plr, bagIndex, cfg) then
             total = total + 1
@@ -982,11 +974,11 @@ local function spawnChests(killer, victim, items, cfg)
     local angleStep = (2 * math.pi) / totalChests
     local idx = 1
 
+    local worldObject = killer:GetNearObject(200)
     for c = 1, totalChests do
         local angle = angleStep * (c - 1)
         local cx = baseX + math.cos(angle) * radius
         local cy = baseY + math.sin(angle) * radius
-        local worldObject = killer:GetNearObject(200)
         local chest
         if worldObject then
             chest = worldObject:SummonGameObject(
@@ -1034,9 +1026,12 @@ local function spawnChests(killer, victim, items, cfg)
                 dbg(string.format("    + %s → gold", fmtCoins(gold)), "chests")
             end
         end
-
-        -- force chest into READY
-        chest:SetLootState(1)
+-- ---------------------------------------------------------Reduce Memory Use, Clean Table as Chests Despawn
+    CreateLuaEvent(function()
+        LootStore[guid]  = nil
+        ChestGold[guid]  = nil
+        dbg("[CHEST CLEANUP] Fired at "..(cfg.DESPAWN_SEC + 0.5).."s for GUID "..guid, "chests")
+    end, (cfg.DESPAWN_SEC + 0.5) * 1000, 1)
     end
     return rawGive
 end
@@ -1484,6 +1479,7 @@ RegisterPlayerEvent(42, function(_, player, msg)
             end
             local val = boolify(raw) or tonumber(raw) or raw
             CFG[key] = val
+            FlushCFGCache() 
             player:SendBroadcastMessage(("|cffffff00[Ultimate PvP]|r %s → %s"):format(key, tostring(val)))
             return false
         end
