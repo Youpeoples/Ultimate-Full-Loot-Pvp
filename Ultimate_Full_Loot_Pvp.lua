@@ -374,6 +374,12 @@ local NEUTRAL_CITY_AREAS = {
 --========================================================================--
 --                       NO TOUCH BEYOND THIS POINT                       --
 --========================================================================--
+
+---------------------------------------------------------------Quick Maffs
+local m_floor, m_max, m_random, m_ceil, m_pi, m_cos, m_sin, m_min, m_abs =
+      math.floor, math.max, math.random, math.ceil,
+      math.pi,   math.cos,  math.sin,   math.min,
+      math.abs
 local DefaultCFG = CFG
 
 local PvPLootHooks = {}
@@ -473,7 +479,7 @@ end
 -- -------------------------------------------------------------- Gold Format
 local ChestGold = {}                -- chestGUID → pending gold
 local function fmtCoins(c)
-    local g,s,co = math.floor(c/10000), math.floor(c/100)%100, c%100
+    local g,s,co = m_floor(c/10000), m_floor(c/100)%100, c%100
     local t={} if g>0 then t[#t+1]=g.." g" end
     if s>0 then t[#t+1]=s.." s" end
     if co>0 or #t==0 then t[#t+1]=co.." c" end
@@ -584,17 +590,24 @@ local function ModIsActiveHere(player, cfg)
     local zoneId = player:GetZoneId()
     local areaId = player:GetAreaId()
 
-    if not cfg.ENABLE_MOD                                   then return false end
-    if cfg.IGNORE_CAPITALS        and CAPITAL_AREAS[areaId]  then return false end
-    if cfg.IGNORE_NEUTRAL_CITIES  and NEUTRAL_CITY_AREAS[areaId] then return false end
-
-    if cfg.MAP_BLOCKLIST[mapId]         then return false end
-    if cfg.ZONE_BLOCKLIST[zoneId]       then return false end
-    if cfg.AREA_BLOCKLIST[areaId]       then return false end
-
-    if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId]   then return false end
-    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then return false end
-    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then return false end
+    if not cfg.ENABLE_MOD then  
+        dbg("Abort – MOD NOT ENABLED") return false end
+    if cfg.IGNORE_CAPITALS        and CAPITAL_AREAS[areaId] then 
+        dbg("Abort – areaId " .. mapId .. " is protected capital", "kill") return false end
+    if cfg.IGNORE_NEUTRAL_CITIES  and NEUTRAL_CITY_AREAS[areaId] then 
+        dbg("Abort – areaId " .. mapId .. " is protected neutral city", "kill") return false end
+    if cfg.MAP_BLOCKLIST[mapId] then 
+        dbg("Abort – mapId " .. mapId .. " is block-listed", "kill") return false end
+    if cfg.ZONE_BLOCKLIST[zoneId] then 
+        dbg("Abort – zoneId " .. zoneId .. " is block-listed", "kill") return false end
+    if cfg.AREA_BLOCKLIST[areaId]  then 
+        dbg("Abort – areaId " .. areaId .. " is block-listed", "kill") return false end
+    if next(cfg.MAP_ALLOWLIST)  and not cfg.MAP_ALLOWLIST[mapId] then 
+        dbg("Abort – mapId " .. mapId .. " not in allow-list", "kill") return false end
+    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then 
+        dbg("Abort – zoneId " .. zoneId .. " not in allow-list", "kill") return false end
+    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then 
+        dbg("Abort – areaId " .. areaId .. " not in allow-list", "kill") return false end
 
     return true
 end
@@ -914,7 +927,7 @@ end
 -- simple Fisher-Yates --------------------------------------------------
 local function shuffle(t)
     for i = #t, 2, -1 do
-        local j = math.random(i)
+        local j = m_random(i)
         t[i], t[j] = t[j], t[i]
     end
 end
@@ -933,16 +946,16 @@ RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
 -- ------------------------------------------------------------ Multi-drop
 local function spawnChests(killer, victim, items, cfg)
-    local take = math.max(1, math.floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
+    local take = m_max(1, m_floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
     dbg("Dropping " .. take .. " of " .. #items .. " items (" .. cfg.ITEM_DROP_PERCENT .. "%)", "chests")
-    local totalChests = math.ceil(take / MAX_CHEST_ITEMS)
+    local totalChests = m_ceil(take / MAX_CHEST_ITEMS)
 
     -- --------------------------------------------------------------
     -- gold distribution
     -- --------------------------------------------------------------
     local victimGold = victim:GetCoinage()
-    local pct = math.random(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX)
-    local rawGive = math.floor(victimGold * pct / 100)
+    local pct = m_random(cfg.GOLD_PERCENT_MIN, cfg.GOLD_PERCENT_MAX)
+    local rawGive = m_floor(victimGold * pct / 100)
     if cfg.GOLD_CAP_PER_KILL > 0 and rawGive > cfg.GOLD_CAP_PER_KILL then
         rawGive = cfg.GOLD_CAP_PER_KILL
     end
@@ -951,8 +964,8 @@ local function spawnChests(killer, victim, items, cfg)
         if cfg.MMR_GOLD_REWARD then 
             local mmrDelta = killer:GetData("MMR") - victim:GetData("MMR")
             if mmrDelta > 0 then
-                local multiplier = math.max(1.0, 1 + (mmrDelta / 100) * (cfg.MMR_GOLD_REWARD_RATIO - 1))
-                rawGive = math.min(math.floor(rawGive * multiplier), victimGold)
+                local multiplier = m_max(1.0, 1 + (mmrDelta / 100) * (cfg.MMR_GOLD_REWARD_RATIO - 1))
+                rawGive = m_min(m_floor(rawGive * multiplier), victimGold)
             end
         end
         victim:ModifyMoney(-rawGive)
@@ -961,7 +974,7 @@ local function spawnChests(killer, victim, items, cfg)
     local perChest, remainder = 0, 0
     if rawGive > 0 then
         if cfg.SPLIT_GOLD_BETWEEN_CHESTS then
-            perChest  = math.floor(rawGive / totalChests)
+            perChest  = m_floor(rawGive / totalChests)
             remainder = rawGive - (perChest * totalChests)
         else
             remainder = rawGive
@@ -971,14 +984,14 @@ local function spawnChests(killer, victim, items, cfg)
     dbg("Spawning " .. totalChests .. " chest(s)", "chests")
     local baseX, baseY, baseZ, baseO = victim:GetX(), victim:GetY(), victim:GetZ(), victim:GetO()
     local radius = 2.5
-    local angleStep = (2 * math.pi) / totalChests
+    local angleStep = (2 * m_pi) / totalChests
     local idx = 1
 
     local worldObject = killer:GetNearObject(200)
     for c = 1, totalChests do
         local angle = angleStep * (c - 1)
-        local cx = baseX + math.cos(angle) * radius
-        local cy = baseY + math.sin(angle) * radius
+        local cx = baseX + m_cos(angle) * radius
+        local cy = baseY + m_sin(angle) * radius
         local chest
         if worldObject then
             chest = worldObject:SummonGameObject(
@@ -1098,13 +1111,13 @@ end
 
 local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
     dbg("MMR_ProcessRewardsAndLosses started", "mmr")
-    local mmrDelta = math.abs(victim:GetData("MMR") - killer:GetData("MMR"))
+    local mmrDelta = m_abs(victim:GetData("MMR") - killer:GetData("MMR"))
     if mmrDelta < (killer:GetData("MMR") * cfg.MMR_REWARD_THRESHOLD / 100) then return end
     
     if (cfg.MMR_KILL_REWARD or cfg.MMR_KILL_LOSS) then -- High MMR killers earn less, low MMR killers earn more
         local mmrDiff = victim:GetData("MMR") - killer:GetData("MMR")
-        local KillItemIDChange = math.min(
-            math.floor((mmrDiff > 0 and mmrDiff or (mmrDiff < 0 and math.abs(mmrDiff) * 0.1 or 1)) * cfg.MMR_KILL_RATE), 
+        local KillItemIDChange = m_min(
+            m_floor((mmrDiff > 0 and mmrDiff or (mmrDiff < 0 and m_abs(mmrDiff) * 0.1 or 1)) * cfg.MMR_KILL_RATE), 
             MMR_GetCurrencyCount(victim, cfg.MMR_KILL_ITEM_ID)
         )
         
@@ -1127,8 +1140,8 @@ local function MMR_ProcessRewardsAndLosses(killer, victim, cfg)
     end
     
     if (cfg.MMR_STREAK_REWARD or cfg.MMR_STREAK_LOSS) and victim:GetData("STREAK") >= cfg.MMR_STREAK_LIMIT then
-        local StreakItemIDChange = math.min(
-            math.floor(victim:GetData("STREAK")^cfg.MMR_STREAK_MULTIPL * cfg.MMR_STREAK_RATE), 
+        local StreakItemIDChange = m_min(
+            m_floor(victim:GetData("STREAK")^cfg.MMR_STREAK_MULTIPL * cfg.MMR_STREAK_RATE), 
             MMR_GetCurrencyCount(victim, cfg.MMR_STREAK_ITEM_ID)
         )
             
@@ -1150,21 +1163,21 @@ local function MMR_Update(killer, victim, cfg)
     
     if cfg.MMR_DIMINISHING_RETURNS then
         local mmrDifference = victimMMR - killerMMR
-        local intervals = math.floor(math.abs(mmrDifference) / CFG.STARTING_MMR)
+        local intervals = m_floor(m_abs(mmrDifference) / CFG.STARTING_MMR)
         
         if mmrDifference > 0 then -- Killing higher MMR = more reward
             mmrGain = mmrGain + (intervals * cfg.MMR_DIM_RETURN_RATE)
             mmrLoss = mmrLoss + (intervals * cfg.MMR_DIM_RETURN_RATE)
         else -- Killing lower MMR = less reward
-            mmrGain = math.max(1, mmrGain - (intervals * cfg.MMR_DIM_RETURN_RATE))
-            mmrLoss = math.max(1, mmrLoss - (intervals * cfg.MMR_DIM_RETURN_RATE))
+            mmrGain = m_max(1, mmrGain - (intervals * cfg.MMR_DIM_RETURN_RATE))
+            mmrLoss = m_max(1, mmrLoss - (intervals * cfg.MMR_DIM_RETURN_RATE))
         end
     end
     
     killer:SetData("MMR", killerMMR + mmrGain)
     killer:SetData("KILLS", killer:GetData("KILLS") + 1)
     killer:SetData("STREAK", killer:GetData("STREAK") + 1)
-    victim:SetData("MMR", math.max(0, victimMMR - mmrLoss))
+    victim:SetData("MMR", m_max(0, victimMMR - mmrLoss))
     victim:SetData("DEATHS", victim:GetData("DEATHS") + 1)
     victim:SetData("STREAK", 0)
   
@@ -1199,20 +1212,38 @@ local function OnKillPlayer(event, killer, victim)
     local zoneId = victim:GetZoneId()
     local cfg    = GetCFG(areaId, zoneId)
 
-    --suicide check
-    if IGNORE_SUICIDE then
-        if killer:GetGUIDLow() == victim:GetGUIDLow() then
-            dbg("Abort – self-kill detected", "kill")
-            return
-        end
-    end
     dbg(string.format("--- PvP kill detected in zone %d ---", zoneId), "kill")
 
-    -- 0) master switch
-    if not cfg.ENABLE_MOD then
-        dbg("Abort – mod disabled (ENABLE_MOD=false)", "kill")
+    -- 0) Is this even an active zone?
+    if not ModIsActiveHere(victim, cfg) then return end
+
+    -- 1) Battleground Out
+    if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
+        dbg("Battleground – abort", "kill")
         return
     end
+    -- 2) Arena Out
+    if cfg.IGNORE_ARENA and (killer:InArena() or victim:InArena()) then 
+        dbg("Arena – abort", "kill") 
+        return 
+    end
+    -- 3) Suicide Out
+    if cfg.IGNORE_SUICIDE and killer:GetGUIDLow() == victim:GetGUIDLow() then
+        dbg("Abort – self-kill detected", "kill")
+        return
+    end
+    -- 4) Level Gate Out
+    if victim:GetLevel() < cfg.MIN_LEVEL or victim:GetLevel() > cfg.MAX_LEVEL then
+        dbg("Outside level gate – abort", "kill")
+        return
+    end
+    -- 5) Level Diff Out
+    local diff = m_abs(killer:GetLevel() - victim:GetLevel())
+    if diff < cfg.MIN_LEVEL_DIFF or diff > cfg.MAX_LEVEL_DIFF then
+        dbg("Level diff "..diff.." outside window – abort", "kill")
+        return
+    end
+    -- 6) Farm Guard Out
     if cfg.ENABLE_KILL_FARM_PROTECTION then
         -- .5) farming guard
         if isFarmed(killer, victim, cfg) then
@@ -1220,148 +1251,88 @@ local function OnKillPlayer(event, killer, victim)
             return
         end
     end
-
-    -- 1) silly ones
-    if cfg.IGNORE_IF_KILLER_DRUNK and killer:GetDrunkValue() > 0 then
-    dbg("Abort – killer drunk stage " .. killer:GetDrunkValue(), "kill")
-        return
-    end
-
-    if cfg.IGNORE_IF_VICTIM_DRUNK and victim:GetDrunkValue() > 0 then
-        dbg("Abort – victim drunk stage " .. victim:GetDrunkValue(), "kill")
-        return
-    end
-
-    if cfg.IGNORE_AFK_VICTIM and victim:IsAFK() then
-        dbg("Abort – victim is AFK", "kill")
-        return
-    end
-
-    if cfg.IGNORE_VICTIM_ALLIANCE and victim:IsAlliance() then
-        dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true", "kill")
-        return
-    end
-
-    if cfg.IGNORE_VICTIM_HORDE and victim:IsHorde() then
-        dbg("Abort – victim is Horde, IGNORE_VICTIM_HORDE=true", "kill")
-        return
-    end
-
-        -- Victim class ignore
-    local victimClass = victim:GetClass()
-    if cfg.IGNORE_VICTIM_PLAYER_CLASS[victimClass] then
-        dbg("Abort – victim class "..victimClass.." ignored via IGNORE_VICTIM_PLAYER_CLASS", "kill")
-        return
-    end
-
-    -- Victim race ignore
-    local victimRace = victim:GetRace()
-    if cfg.IGNORE_VICTIM_PLAYER_RACES[victimRace] then
-        dbg("Abort – victim race "..victimRace.." ignored via IGNORE_VICTIM_PLAYER_RACES", "kill")
-        return
-    end
-
-    -- Killer class ignore
-    local killerClass = killer:GetClass()
-    if cfg.IGNORE_KILLER_PLAYER_CLASS[killerClass] then
-        dbg("Abort – killer class "..killerClass.." ignored via IGNORE_KILLER_PLAYER_CLASS", "kill")
-        return
-    end
-
-    -- Killer race ignore
-    local killerRace = killer:GetRace()
-    if cfg.IGNORE_KILLER_PLAYER_RACES[killerRace] then
-        dbg("Abort – killer race "..killerRace.." ignored via IGNORE_KILLER_PLAYER_RACES", "kill")
-        return
-    end
-
-    -- 2) battleground & arena toggle
-    if cfg.IGNORE_BATTLEGROUND and victim:InBattleground() then
-        dbg("Battleground – abort", "kill")
-        return
-    end
-    if cfg.IGNORE_ARENA           and (killer:InArena() or victim:InArena()) then return end
-
-    -- 4) level gates
-    if victim:GetLevel() < cfg.MIN_LEVEL or victim:GetLevel() > cfg.MAX_LEVEL then
-        dbg("Outside level gate – abort", "kill")
-        return
-    end
-
-    -- 5) level-difference window
-    local diff = math.abs(killer:GetLevel() - victim:GetLevel())
-    if diff < cfg.MIN_LEVEL_DIFF or diff > cfg.MAX_LEVEL_DIFF then
-        dbg("Level diff "..diff.." outside window – abort", "kill")
-        return
-    end
-
-    -- 6) map / zone filters 
-    if next(cfg.MAP_ALLOWLIST) and not cfg.MAP_ALLOWLIST[mapId] then
-        dbg("Abort – mapId " .. mapId .. " not in allow-list", "kill")
-        return
-    end
-    if cfg.MAP_BLOCKLIST[mapId] then
-        dbg("Abort – mapId " .. mapId .. " is block-listed", "kill")
-        return
-    end
-
-    if next(cfg.ZONE_ALLOWLIST) and not cfg.ZONE_ALLOWLIST[zoneId] then
-        dbg("Abort – zoneId " .. zoneId .. " not in allow-list", "kill")
-        return
-    end
-    if cfg.ZONE_BLOCKLIST[zoneId] then
-        dbg("Abort – zoneId " .. zoneId .. " is block-listed", "kill")
-        return
-    end
-
-    if next(cfg.AREA_ALLOWLIST) and not cfg.AREA_ALLOWLIST[areaId] then
-        dbg("Abort – areaId " .. areaId .. " not in allow-list", "kill")
-        return
-    end
-    if cfg.AREA_BLOCKLIST[areaId] then
-        dbg("Abort – areaId " .. areaId .. " is block-listed", "kill")
-        return
-    end
-
-    -- 7) spirit-healer proximity
-    if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
-        dbg("Near spirit healer – abort", "kill")
-        return
-    end
-
-    -- 8) capital / neutral city gates
-    if cfg.IGNORE_CAPITALS and CAPITAL_AREAS[areaId] then
-        dbg("Inside capital city – abort", "kill")
-        return
-    end
-    if cfg.IGNORE_NEUTRAL_CITIES and NEUTRAL_CITY_AREAS[areaId] then
-        dbg("Inside neutral city – abort", "kill")
-        return
-    end
-
-    -- 9) Custom Aura Checks for both Victim/Killer
+    -- 7) Aura Check Victim Out
     for spellId in pairs(cfg.IGNORE_AURA_ON_VICTIM) do
         if victim:HasAura(spellId) then
             dbg("Abort – victim has ignored aura " .. spellId, "kill")
             return
         end
     end
-
+    -- 8) Aura Check Killer Out
     for spellId in pairs(cfg.IGNORE_AURA_ON_KILLER) do
         if killer:HasAura(spellId) then
             dbg("Abort – killer has ignored aura " .. spellId, "kill")
             return
         end
     end
+    -- 9) Killer Drunk Out
+    if cfg.IGNORE_IF_KILLER_DRUNK and killer:GetDrunkValue() > 0 then
+    dbg("Abort – killer drunk stage " .. killer:GetDrunkValue(), "kill")
+        return
+    end
+    -- 9) Victim Drunk Out
+    if cfg.IGNORE_IF_VICTIM_DRUNK and victim:GetDrunkValue() > 0 then
+        dbg("Abort – victim drunk stage " .. victim:GetDrunkValue(), "kill")
+        return
+    end
+    -- 10) Afk Victim Out
+    if cfg.IGNORE_AFK_VICTIM and victim:IsAFK() then
+        dbg("Abort – victim is AFK", "kill")
+        return
+    end
+    -- 11) Victim Alliance Out
+    if cfg.IGNORE_VICTIM_ALLIANCE and victim:IsAlliance() then
+        dbg("Abort – victim is Alliance, IGNORE_VICTIM_ALLIANCE=true", "kill")
+        return
+    end
+    -- 12) Victim Horde Out
+    if cfg.IGNORE_VICTIM_HORDE and victim:IsHorde() then
+        dbg("Abort – victim is Horde, IGNORE_VICTIM_HORDE=true", "kill")
+        return
+    end
 
-    dbg("Killer "..killer:GetName().." ("..killer:GetLevel()..") / Victim "
-        ..victim:GetName().." ("..victim:GetLevel()..")", "kill")
+    -- 13) Victim Class Out
+    local victimClass = victim:GetClass()
+    if cfg.IGNORE_VICTIM_PLAYER_CLASS[victimClass] then
+        dbg("Abort – victim class "..victimClass.." ignored via IGNORE_VICTIM_PLAYER_CLASS", "kill")
+        return
+    end
 
-    -- resurrection sickness
+    -- 14) Victim Race Out
+    local victimRace = victim:GetRace()
+    if cfg.IGNORE_VICTIM_PLAYER_RACES[victimRace] then
+        dbg("Abort – victim race "..victimRace.." ignored via IGNORE_VICTIM_PLAYER_RACES", "kill")
+        return
+    end
+
+    -- 15) Killer Class Out
+    local killerClass = killer:GetClass()
+    if cfg.IGNORE_KILLER_PLAYER_CLASS[killerClass] then
+        dbg("Abort – killer class "..killerClass.." ignored via IGNORE_KILLER_PLAYER_CLASS", "kill")
+        return
+    end
+
+    -- 16) Killer Race Out
+    local killerRace = killer:GetRace()
+    if cfg.IGNORE_KILLER_PLAYER_RACES[killerRace] then
+        dbg("Abort – killer race "..killerRace.." ignored via IGNORE_KILLER_PLAYER_RACES", "kill")
+        return
+    end
+    -- 17) In Graveyard Out
+    if cfg.IGNORE_SPIRIT_HEALER_RANGE and IsNearSpiritHealer(victim, cfg.SPIRIT_HEALER_RANGE) then
+        dbg("Near spirit healer – abort", "kill")
+        return
+    end
+    -- 18) Res Sickness Out
     if cfg.IGNORE_RESS_SICKNESS and victim:HasAura(15007) then
         dbg("Resurrection sickness – abort", "kill")
         return
     end
+
+    dbg("Killer "..killer:GetName().." ("..killer:GetLevel()..") / Victim "
+        ..victim:GetName().." ("..victim:GetLevel()..")", "kill")
+
+
 
     if CFG.MMR_ENABLED then -- Consider moving this below "spawnChests" to bar MMR changes from killing players without a single item
         MMR_Update(killer, victim, cfg) -- Update MMR in cache only if requirements are fulfilled
