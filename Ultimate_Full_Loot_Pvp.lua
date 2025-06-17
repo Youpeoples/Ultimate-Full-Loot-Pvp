@@ -209,7 +209,15 @@ local CFG = {
     CHEST_ENTRY               = 2069420,   -- chest template
     DESPAWN_SEC               = 60,        -- chest lifetime (seconds)
     CREATE_DEFAULT_CHEST      = true,      -- create initial gameobject SQL
+    RANDOM_CHEST_ORIENTATION  = false,     -- non uniform facing chests
+    
 
+    -- Chest Stacking Options:
+    -- "PYRAMID", "VERTICAL", "LINE", "RADIUS" 
+    -- -------------------------------
+    CHEST_STACK_STYLE         = "RADIUS", -- Examples Above
+    STACK_HORIZONTAL_SPACING  = 1,       -- X/Y distance between chests on each layer
+    STACK_VERTICAL_OFFSET     = 1,       -- Z distance between layers 
     -- ------------------------------------------------------------------
     -- Context exclusions
     -- ------------------------------------------------------------------
@@ -376,10 +384,10 @@ local NEUTRAL_CITY_AREAS = {
 --========================================================================--
 
 ---------------------------------------------------------------Quick Maffs
-local m_floor, m_max, m_random, m_ceil, m_pi, m_cos, m_sin, m_min, m_abs =
+local m_floor, m_max, m_random, m_ceil, m_pi, m_cos, m_sin, m_min, m_abs, m_sqrt =
       math.floor, math.max, math.random, math.ceil,
       math.pi,   math.cos,  math.sin,   math.min,
-      math.abs
+      math.abs, math.sqrt
 local DefaultCFG = CFG
 
 local PvPLootHooks = {}
@@ -944,6 +952,71 @@ local function OnChestUse(event, go, player)
 end
 RegisterGameObjectEvent(CFG.CHEST_ENTRY, 14, OnChestUse)
 
+-- ---------------------------------------------------------Chest Spawn Style Helper
+local function getChestPositions(baseX, baseY, baseZ, baseO, totalChests, cfg)
+    local positions = {}
+    local style = cfg.CHEST_STACK_STYLE:upper()
+
+    if style == "VERTICAL" then
+        -- straight vertical stack
+        local vs = cfg.STACK_VERTICAL_OFFSET
+        for i = 1, totalChests do
+            positions[#positions+1] = {
+                x = baseX,
+                y = baseY,
+                z = baseZ + (i - 1) * vs,
+            }
+        end
+
+    elseif style == "PYRAMID" then
+        -- triangular pyramid
+        local cosO, sinO = m_cos(baseO), m_sin(baseO)
+        local hs, vs = cfg.STACK_HORIZONTAL_SPACING, cfg.STACK_VERTICAL_OFFSET
+        local rows = {
+            { count = m_min(totalChests,           3), zOff = 0       },
+            { count = m_min(m_max(totalChests-3,0), 2), zOff = vs      },
+            { count = m_min(m_max(totalChests-5,0), 1), zOff = 2*vs    },
+        }
+        for _, row in ipairs(rows) do
+            for i = 1, row.count do
+                local d = (i - (row.count + 1) / 2) * hs
+                positions[#positions+1] = {
+                    x = baseX + cosO * d,
+                    y = baseY + sinO * d,
+                    z = baseZ + row.zOff,
+                }
+            end
+        end
+
+    elseif style == "LINE" then
+        -- straight line along facing
+        local cosO, sinO = m_cos(baseO), m_sin(baseO)
+        local hs = cfg.STACK_HORIZONTAL_SPACING
+        for i = 1, totalChests do
+            local d = (i - (totalChests + 1) / 2) * hs
+            positions[#positions+1] = {
+                x = baseX + cosO * d,
+                y = baseY + sinO * d,
+                z = baseZ,
+            }
+        end
+    else
+        -- default radial circle
+        local radius    = 2.5
+        local angleStep = (2 * m_pi) / totalChests
+        for i = 1, totalChests do
+            local angle = angleStep * (i - 1)
+            positions[#positions+1] = {
+                x = baseX + m_cos(angle) * radius,
+                y = baseY + m_sin(angle) * radius,
+                z = baseZ,
+            }
+        end
+    end
+
+    return positions
+end
+
 -- ------------------------------------------------------------ Multi-drop
 local function spawnChests(killer, victim, items, cfg)
     local take = m_max(1, m_floor(#items * cfg.ITEM_DROP_PERCENT / 100 + 0.5))
@@ -983,72 +1056,52 @@ local function spawnChests(killer, victim, items, cfg)
 
     dbg("Spawning " .. totalChests .. " chest(s)", "chests")
     local baseX, baseY, baseZ, baseO = victim:GetX(), victim:GetY(), victim:GetZ(), victim:GetO()
-    local radius = 2.5
-    local angleStep = (2 * m_pi) / totalChests
-    local idx = 1
-
+    local useRandomO = cfg.RANDOM_CHEST_ORIENTATION
     local worldObject = killer:GetNearObject(200)
-    for c = 1, totalChests do
-        local angle = angleStep * (c - 1)
-        local cx = baseX + m_cos(angle) * radius
-        local cy = baseY + m_sin(angle) * radius
-        local chest
-        if worldObject then
-            chest = worldObject:SummonGameObject(
-                cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC
-            )
-        else
-            chest = killer:SummonGameObject(
-                cfg.CHEST_ENTRY, cx, cy, baseZ, baseO, cfg.DESPAWN_SEC
-            )
-        end
 
+    local positions = getChestPositions(baseX, baseY, baseZ, baseO, totalChests, cfg)
 
+    local idx = 1
+    for slotIdx, pos in ipairs(positions) do
+        local orientation = useRandomO
+            and (m_random() * 2 * m_pi)
+            or baseO
+
+        -- summon
+        local chest = worldObject
+            and worldObject:SummonGameObject(cfg.CHEST_ENTRY, pos.x, pos.y, pos.z, orientation, cfg.DESPAWN_SEC)
+            or killer:SummonGameObject(cfg.CHEST_ENTRY, pos.x, pos.y, pos.z, orientation, cfg.DESPAWN_SEC)
         if not chest then
-            dbg("Chest spawn FAILED (" .. c .. ")", "chests")
+            dbg("Chest spawn FAILED at slot "..slotIdx, "chests")
             break
         end
 
+        -- fill loot
         local guid = chest:GetGUIDLow()
-        dbg("Chest #" .. c .. " GUID " .. guid, "chests")
-
-        -- record and fill items
         LootStore[guid] = {}
-        for slot = 1, MAX_CHEST_ITEMS do
+        for i = 1, MAX_CHEST_ITEMS do
             if idx > take then break end
-            local data = items[idx]
-            idx = idx + 1
-
+            local data = items[idx]; idx = idx + 1
             chest:AddLoot(data.entry, data.count)
             victim:RemoveItem(data.entry, data.count)
-            dbg(string.format("    + %s x%d", data.pretty, data.count), "chests")
-
-            table.insert(LootStore[guid], {
-                entry  = data.entry,
-                count  = data.count,
-                pretty = data.pretty,
-            })
+            table.insert(LootStore[guid], { entry = data.entry, count = data.count, pretty = data.pretty })
         end
 
         -- stash gold
         if rawGive > 0 and cfg.SPLIT_GOLD_BETWEEN_CHESTS then
-            local gold = perChest
-            if c == 1 then gold = gold + remainder end
-            if gold > 0 then
-                ChestGold[guid] = gold
-                dbg(string.format("    + %s → gold", fmtCoins(gold)), "chests")
-            end
+            local goldThis = (slotIdx == 1) and (perChest + remainder) or perChest
+            if goldThis > 0 then ChestGold[guid] = goldThis end
         end
--- ---------------------------------------------------------Reduce Memory Use, Clean Table as Chests Despawn
-    CreateLuaEvent(function()
-        LootStore[guid]  = nil
-        ChestGold[guid]  = nil
-        dbg("[CHEST CLEANUP] Fired at "..(cfg.DESPAWN_SEC + 0.5).."s for GUID "..guid, "chests")
-    end, (cfg.DESPAWN_SEC + 0.5) * 1000, 1)
+
+        -- cleanup
+        CreateLuaEvent(function()
+            LootStore[guid] = nil
+            ChestGold[guid] = nil
+        end, (cfg.DESPAWN_SEC + 0.5) * 1000, 1)
     end
+
     return rawGive
 end
-
 -- -------------------------------------------------------------- MMR helper functions
 local function MMR_Load(player)
     dbg("MMR_Load started", "mmr")
