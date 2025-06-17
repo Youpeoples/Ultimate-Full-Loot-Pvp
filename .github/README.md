@@ -104,6 +104,10 @@ Open the script and edit the `CFG` block. Every option is inline-documented. Key
 | `SPLIT_GOLD_BETWEEN_CHESTS` | Evenly divide stolen gold across chests |
 |  |  |
 |  |  |
+| `CHEST_STACK_STYLE` | 4 Options for Chest Spawn Style |
+| `RANDOM_CHEST_ORIENTATION` | On/Off Uniform Chest Facing Direction |
+|  |  |
+|  |  |
 | `CUSTOM_ALLOW_IDS` | Item IDs to always drop |
 | `CUSTOM_IGNORE_CLASSES` | Item class/subclass strings to ignore |
 | `CUSTOM_IGNORE_IDS` | 	Item IDs to always ignore ||  |  |
