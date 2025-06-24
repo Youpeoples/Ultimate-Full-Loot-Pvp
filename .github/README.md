@@ -43,7 +43,7 @@
 ---
 
 ## Installation
-1. Copy `variable_pvp_loot_drop.lua` into your server’s `lua_scripts/` folder.
+1. Copy `Ultimate_Full_Loot_Pvp.lua` into your server’s `lua_scripts/` folder.
 2. Restart `worldserver`.  
 3. Kill another player in the open world to see chests spawn.
    
