@@ -1259,6 +1259,8 @@ end
 
 -- -------------------------------------------------------------- main callback
 local function OnKillPlayer(event, killer, victim)
+    if killer == victim then return end
+    
     -- grab the per-zone config
     local mapId = victim:GetMapId()
     local areaId = victim:GetAreaId()
